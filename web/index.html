@@ -1386,7 +1386,7 @@
           <span class="section-kicker">02 · Architecture</span>
           <h2 class="section-title">Architecture</h2>
           <p class="section-desc">
-            Four-plane serverless layout connecting Amazon CloudFront and private S3 storage to the Python 3.12 Lambda runtime and Amazon Bedrock in <code>us-west-2</code>. <strong>Click any component below to inspect its module path and measured metrics.</strong>
+            Four-plane serverless layout connecting Amazon CloudFront and private S3 storage to the AWS Lambda runtime and Amazon Bedrock in <code>us-west-2</code>. <strong>Click any component below to inspect its module path and measured metrics.</strong>
           </p>
         </div>
       </div>
@@ -1396,14 +1396,14 @@
           <span class="lens-kicker">Request Lifecycle</span>
           <h4>Edge Asset Delivery &amp; On-Demand Lambda Execution</h4>
           <p>
-            CloudFront serves the static web UI from a private S3 bucket with zero idle server cost. Clicking any demo button in Section 05 sends an uncached <code>/api/*</code> request to a 256 MB Python 3.12 Lambda function that compiles the graph, runs tiled attention, allocates paged KV blocks, or calls Amazon Bedrock live, returning fresh heap and latency figures.
+            CloudFront serves the static web UI from a private S3 bucket with zero idle server cost. Clicking any demo button in Section 05 sends an uncached <code>/api/*</code> request to a 256 MB AWS Lambda API function that compiles the graph, runs tiled attention, allocates paged KV blocks, or calls Amazon Bedrock live, returning fresh heap and latency figures.
           </p>
         </div>
         <div class="lens-box hood">
           <span class="lens-kicker">Origin Security &amp; Routing</span>
           <h4>SigV4 Origin Access Control + Uncached API Path</h4>
           <p>
-            CloudFront distribution <code>E2ZSOS7XVJ55C7</code> mounts two origins: (1) <code>s3://neuronpulse-web-796330847946-us-west-2</code> locked with all four <code>BlockPublicAccess</code> flags and SigV4 OAC; and (2) <code>neuronpulse-api-origin</code> (Python 3.12 Lambda Function URL) with <code>CachingDisabled</code> (<code>Cache-Control: no-store</code>) and least-privilege <code>bedrock:InvokeModel</code> permissions.
+            CloudFront distribution <code>E2ZSOS7XVJ55C7</code> mounts two origins: (1) <code>s3://neuronpulse-web-796330847946-us-west-2</code> locked with all four <code>BlockPublicAccess</code> flags and SigV4 OAC; and (2) <code>neuronpulse-api-origin</code> (AWS Lambda Function URL) with <code>CachingDisabled</code> (<code>Cache-Control: no-store</code>) and least-privilege <code>bedrock:InvokeModel</code> permissions.
           </p>
         </div>
       </div>
@@ -1478,12 +1478,12 @@
             <text x="775" y="81" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#065F46">neuronpulse-web-*-us-west-2</text>
           </g>
 
-          <!-- Node 4: 256 MB Python 3.12 Lambda -->
+          <!-- Node 4: 256 MB AWS Lambda API -->
           <g class="ex-node" data-arch-node="edge-lambda" tabindex="0">
             <path d="M 640,102 Q 775,99 910,103 Q 913,130 909,156 Q 774,159 641,155 Q 637,129 640,102 Z" fill="#FFE8D6" />
             <path class="ex-stroke-main" d="M 640,102 Q 775,99 910,103 Q 913,130 909,156 Q 774,159 641,155 Q 637,129 640,102 Z" fill="none" stroke="#18181B" stroke-width="2" />
             <path d="M 642,104 Q 776,102 908,105 Q 910,130 907,154 Q 773,156 643,153 Z" fill="none" stroke="#18181B" stroke-width="1" opacity="0.6" />
-            <text x="775" y="125" text-anchor="middle" class="ex-hand" font-size="20" font-weight="700" fill="#18181B">256 MB Python 3.12 Lambda</text>
+            <text x="775" y="125" text-anchor="middle" class="ex-hand" font-size="20" font-weight="700" fill="#18181B">256 MB AWS Lambda API</text>
             <text x="775" y="144" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#9A3412">neuronpulse.server.lambda_handler</text>
           </g>
 
@@ -1647,7 +1647,7 @@
           <span class="section-kicker">03 · Implementation</span>
           <h2 class="section-title">Implementation</h2>
           <p class="section-desc">
-            Five Python modules in <code>neuronpulse/</code> built on native numeric, binary buffer, and profiling primitives (<code>math.sumprod</code>, <code>struct</code>, <code>bytearray</code>, <code>memoryview</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>) and <code>boto3</code>.
+            Five backend modules in <code>neuronpulse/</code> built on native numeric, binary buffer, and profiling primitives (<code>math.sumprod</code>, <code>struct</code>, <code>bytearray</code>, <code>memoryview</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>) and <code>boto3</code>.
           </p>
         </div>
       </div>
@@ -1800,7 +1800,7 @@
           <span class="lens-kicker">Resource Costs</span>
           <h4>What Each Optimization Gives Up</h4>
           <p>
-            Operator fusion spends a few milliseconds analyzing the graph ahead of time and discards intermediate tensors that backward training passes would otherwise retain. Tiled attention cuts memory by 95%, though on unmasked bidirectional runs the per-tile rescaling adds a small scalar loop cost in pure Python. Paged KV adds a block-table indirection step, and Nova Micro supports text-only inputs in exchange for lower latency and cost.
+            Operator fusion spends a few milliseconds analyzing the graph ahead of time and discards intermediate tensors that backward training passes would otherwise retain. Tiled attention cuts memory by 95%, though on unmasked bidirectional runs the per-tile rescaling adds a small per-tile rescaling step. Paged KV adds a block-table indirection step, and Nova Micro supports text-only inputs in exchange for lower latency and cost.
           </p>
         </div>
         <div class="lens-box hood">
@@ -1824,7 +1824,7 @@
           <span class="section-kicker">05 · Live Demo</span>
           <h2 class="section-title">Live Demo</h2>
           <p class="section-desc">
-            Each tab calls the Python 3.12 AWS Lambda backend (<code>/api/*</code>) and returns live <code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> latency, and IEEE-754 equivalence checks.
+            Each tab calls the AWS Lambda backend (<code>/api/*</code>) and returns live <code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> latency, and IEEE-754 equivalence checks.
           </p>
         </div>
         <span class="tag tag-pass" id="studioExecStatus">Ready · Initialized from Measured Benchmark Snapshot</span>
@@ -2441,7 +2441,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         plane: 'Plane ① · AWS Serverless Edge & Compute',
         title: 'Amazon CloudFront Global Edge Distribution (E2ZSOS7XVJ55C7)',
         module: 'infra/deploy_cloudfront.sh · HTTPS TLS 1.3 + HTTP/2 & HTTP/3',
-        summary: 'Serves static assets from the private S3 bucket via SigV4 Origin Access Control (OAC) on default (*) routes and forwards dynamic /api/* requests with Cache-Control: no-store to the Python 3.12 Lambda Function URL.',
+        summary: 'Serves static assets from the private S3 bucket via SigV4 Origin Access Control (OAC) on default (*) routes and forwards dynamic /api/* requests with Cache-Control: no-store to the AWS Lambda Function URL.',
         metric: 'Distribution E2ZSOS7XVJ55C7 · 100% HTTPS'
       },
       'edge-s3': {
@@ -2453,10 +2453,10 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
       },
       'edge-lambda': {
         plane: 'Plane ① · AWS Serverless Edge & Compute',
-        title: '256 MB Python 3.12 AWS Lambda Origin (neuronpulse-api-origin)',
+        title: '256 MB AWS Lambda API Origin (neuronpulse-api-origin)',
         module: 'neuronpulse/server.py :: lambda_handler & route_api_request',
         summary: 'Executes /api/health, /api/state, /api/compiler/optimize, /api/attention/run, /api/kvcache/run, /api/quant-spec, /api/transport/ring, /api/correlator/run, and /api/bedrock/compare live on every request.',
-        metric: '256 MB Python 3.12 · 0 EC2 / 0 GPU Instances'
+        metric: '256 MB AWS Lambda · 0 EC2 / 0 GPU Instances'
       },
       'compiler-ir': {
         plane: 'Plane ② · Tensor Graph Compiler & Tiled Attention',
@@ -3020,7 +3020,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     document.getElementById('runCompilerBtn').addEventListener('click', async () => {
       const btn = document.getElementById('runCompilerBtn');
       btn.disabled = true;
-      setStudioStatus('Executing /api/compiler/optimize on Python 3.12 Lambda...', true);
+      setStudioStatus('Executing /api/compiler/optimize on AWS Lambda...', true);
       try {
         const resp = await fetch('/api/compiler/optimize', {
           method: 'POST',
@@ -3115,7 +3115,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
       const btn1 = document.getElementById('runAttentionBtn');
       const btn2 = document.getElementById('runAttentionSweepBtn');
       btn1.disabled = true; btn2.disabled = true;
-      setStudioStatus('Executing /api/attention/run on Python 3.12 Lambda...', true);
+      setStudioStatus('Executing /api/attention/run on AWS Lambda...', true);
       try {
         const resp = await fetch('/api/attention/run', {
           method: 'POST',
@@ -3224,7 +3224,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     document.getElementById('runKvBtn').addEventListener('click', async () => {
       const btn = document.getElementById('runKvBtn');
       btn.disabled = true;
-      setStudioStatus('Executing /api/kvcache/run on Python 3.12 Lambda...', true);
+      setStudioStatus('Executing /api/kvcache/run on AWS Lambda...', true);
       try {
         const resp = await fetch('/api/kvcache/run', {
           method: 'POST',
@@ -3575,7 +3575,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     document.getElementById('runQuantSpecBtn').addEventListener('click', async () => {
       const btn = document.getElementById('runQuantSpecBtn');
       btn.disabled = true;
-      setStudioStatus('Executing /api/quant-spec on Python 3.12 Lambda...', true);
+      setStudioStatus('Executing /api/quant-spec on AWS Lambda...', true);
       try {
         const resp = await fetch('/api/quant-spec', {
           method: 'POST',
@@ -3603,7 +3603,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     document.getElementById('runTransportBtn').addEventListener('click', async () => {
       const btn = document.getElementById('runTransportBtn');
       btn.disabled = true;
-      setStudioStatus('Executing /api/transport/ring on Python 3.12 Lambda...', true);
+      setStudioStatus('Executing /api/transport/ring on AWS Lambda...', true);
       try {
         const resp = await fetch('/api/transport/ring', {
           method: 'POST',

@@ -1,6 +1,6 @@
 # NeuronPulse v2: ML Graph Compiler, Tiled FlashAttention, Paged KV, Quantization, Speculative Decoding, Transport Ring & Live Bedrock Profiler
 
-> **Live Amazon CloudFront App (Private S3 OAC + 256 MB Python 3.12 Lambda + Live Bedrock):** [https://d3dfklxckt5f00.cloudfront.net](https://d3dfklxckt5f00.cloudfront.net)  
+> **Live Amazon CloudFront App (Private S3 OAC + 256 MB AWS Lambda API + Live Bedrock):** [https://d3dfklxckt5f00.cloudfront.net](https://d3dfklxckt5f00.cloudfront.net)  
 > **CloudFront Distribution ID:** `E2ZSOS7XVJ55C7` (`us-west-2` Lambda `/api/*` + `s3://neuronpulse-web-796330847946-us-west-2`)  
 > **Live Health & Quantization Endpoints:** [`/api/health`](https://d3dfklxckt5f00.cloudfront.net/api/health) · [`/api/quant-spec`](https://d3dfklxckt5f00.cloudfront.net/api/quant-spec) · [`/api/transport/ring`](https://d3dfklxckt5f00.cloudfront.net/api/transport/ring)  
 > **Infrastructure Footprint:** **100% Free-Tier Serverless (`$0.00/hr` idle · `0` EC2, GPU, or SageMaker instances)**. Every metric below is measured from real Python execution (`tracemalloc`, `time.perf_counter()`, `struct`/`bytearray` binary packing, IEEE-754 parity checks) and live `boto3` AWS Bedrock Converse API calls (`us.amazon.nova-micro-v1:0` & `us.amazon.nova-lite-v1:0`).

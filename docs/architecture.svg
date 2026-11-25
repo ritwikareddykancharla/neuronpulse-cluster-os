@@ -27,7 +27,7 @@
 
   <!-- Header Banner -->
   <rect x="28" y="22" width="1084" height="44" fill="#141413"/>
-  <text x="44" y="49" font-family="ui-monospace, Menlo, monospace" font-weight="700" font-size="12.6" fill="#FAF7F2">NEURONPULSE v2 ARCHITECTURE · SERVERLESS PYTHON 3.12 + BEDROCK NOVA · 0 EC2/GPU INSTANCES · $0.00 IDLE</text>
+  <text x="44" y="49" font-family="ui-monospace, Menlo, monospace" font-weight="700" font-size="12.6" fill="#FAF7F2">NEURONPULSE v2 ARCHITECTURE · SERVERLESS AWS LAMBDA + BEDROCK NOVA · 0 EC2/GPU INSTANCES · $0.00 IDLE</text>
 
   <!-- Client Box -->
   <rect x="34" y="194" width="178" height="128" class="shadow"/>
@@ -59,11 +59,11 @@
   <text x="524" y="150" class="sub">SigV4 Origin Access Control</text>
   <text x="524" y="168" class="sub">BlockPublicAccess = TRUE</text>
 
-  <!-- Origin 2: Python 3.12 Lambda -->
+  <!-- Origin 2: AWS Lambda -->
   <rect x="514" y="214" width="268" height="262" class="shadow"/>
   <rect x="510" y="210" width="268" height="262" class="box-green"/>
   <rect x="510" y="210" width="268" height="24" fill="#059669"/>
-  <text x="522" y="226" class="badge">256 MB PYTHON 3.12 LAMBDA</text>
+  <text x="522" y="226" class="badge">256 MB AWS LAMBDA API</text>
   <text x="524" y="253" class="title">neuronpulse-api-origin</text>
   <text x="524" y="274" class="sub">1. compiler_ir.py (-87.8% mem)</text>
   <text x="524" y="293" class="sub">2. flash_attention.py (20.74x)</text>
