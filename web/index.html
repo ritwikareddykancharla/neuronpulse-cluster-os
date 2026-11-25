@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuronPulse — ML Graph Compiler Pass, Tiled FlashAttention, Paged KV-Cache &amp; Live Bedrock Serving Profiler</title>
-  <meta name="description" content="100% Free-Tier Serverless Python 3.12 ML Systems Lab: SSA Graph Compiler Pass (-87.8% peak tensor memory), Online-Softmax Tiled FlashAttention (-95.18% peak memory at N=512), Paged KV-Cache + CoW Prefix Allocator (46.18% to 2.37% fragmentation), Causal Worker Fault Correlator (100.0% isolation), and Live AWS Bedrock Nova Micro vs Nova Lite Profiler." />
+  <title>NeuronPulse: Cutting LLM Memory Use and Latency With Graph Fusion, Tiled Attention, and Paged KV Cache</title>
+  <meta name="description" content="NeuronPulse cuts LLM memory usage and latency in Python with computation-graph fusion, tiled attention, paged KV cache sharing, distributed worker fault correlation, and live Amazon Bedrock comparisons." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&amp;family=Martian+Mono:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&amp;family=Schibsted+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
@@ -320,34 +320,62 @@
       margin-bottom: 1.4rem;
     }
 
-    .headline-pills {
+    .hero-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.6rem;
+      gap: 0.65rem;
       margin-bottom: 1.45rem;
-    }
-
-    .headline-pill {
-      font-family: 'Martian Mono', monospace;
-      font-size: 0.73rem;
-      font-weight: 600;
-      padding: 0.36rem 0.68rem;
-      background: var(--bg-obsidian);
-      color: #FAF7F2;
-      border: 2px solid var(--border);
-      line-height: 1.4;
-    }
-
-    .headline-pill span {
-      color: #93C5FD;
-      font-weight: 700;
     }
 
     .kpi-strip {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 1.05rem;
       margin-top: 1.15rem;
+    }
+    @media (max-width: 980px) {
+      .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 580px) {
+      .kpi-strip { grid-template-columns: 1fr; }
+    }
+
+    .pipeline-bar {
+      margin-top: 1.25rem;
+      background: var(--bg-obsidian);
+      color: #FAF7F2;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 0.88rem 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .pipe-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .pipe-num {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 0.14rem 0.44rem;
+      border: 1.5px solid #FAF7F2;
+    }
+
+    .pipe-arrow {
+      color: #93C5FD;
+      font-family: 'Martian Mono', monospace;
+      font-weight: 700;
     }
 
     .card {
@@ -448,8 +476,8 @@
       margin-top: 0.38rem;
     }
 
-    /* Dual-Layer Readability Callouts: Plain-English Intuition + Under the Hood */
-    .plain-english-callout {
+    /* Section Callouts & Paired Cards */
+    .overview-callout {
       background: var(--bg-card);
       border: 2px solid var(--border);
       border-left: 8px solid var(--accent);
@@ -458,7 +486,7 @@
       margin-bottom: 1.6rem;
     }
 
-    .plain-english-callout h3 {
+    .overview-callout h3 {
       font-size: 1.08rem;
       font-weight: 800;
       margin-bottom: 0.5rem;
@@ -468,7 +496,7 @@
       flex-wrap: wrap;
     }
 
-    .plain-english-callout p {
+    .overview-callout p {
       font-size: 0.95rem;
       color: var(--ink-muted);
       line-height: 1.72;
@@ -883,7 +911,7 @@
       font-weight: 600;
     }
 
-    /* §05 Interactive Studio Tabs + How-To Sandbox Guides */
+    /* Interactive Demo Tabs */
     .tab-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1161,8 +1189,8 @@
   <header class="topbar" id="topHeader">
     <div class="container topbar-inner">
       <a href="#problem-statement" class="brand">
-        <span class="brand-badge">NEURONPULSE v2.0</span>
-        <span>ML Compiler, Tiled Attention, Paged KV &amp; Bedrock Profiler</span>
+        <span class="brand-badge">NEURONPULSE</span>
+        <span>LLM Memory &amp; Latency Optimization</span>
       </a>
       <nav class="nav-links" aria-label="Primary Navigation">
         <a class="nav-pill" href="https://d3dfklxckt5f00.cloudfront.net/api/health" target="_blank" rel="noopener">/api/health ↗</a>
@@ -1178,13 +1206,13 @@
   <!-- Sticky Jump-to-Section TOC Bar -->
   <nav class="sticky-toc" id="stickyToc" aria-label="Section Navigation">
     <div class="container sticky-toc-inner">
-      <span class="toc-label">Jump To:</span>
-      <a href="#problem-statement" class="toc-chip active" data-toc-link="problem-statement">§01 · Problem Statement</a>
-      <a href="#architecture" class="toc-chip" data-toc-link="architecture">§02 · System Architecture</a>
-      <a href="#implementation" class="toc-chip" data-toc-link="implementation">§03 · Implementation</a>
-      <a href="#tradeoffs" class="toc-chip" data-toc-link="tradeoffs">§04 · Design Trade-Offs</a>
-      <a href="#studio" class="toc-chip" data-toc-link="studio">§05 · Interactive Studio</a>
-      <a href="#benchmarks" class="toc-chip" data-toc-link="benchmarks">§06 · Benchmarks</a>
+      <span class="toc-label">Sections:</span>
+      <a href="#problem-statement" class="toc-chip active" data-toc-link="problem-statement">01 · Problem</a>
+      <a href="#architecture" class="toc-chip" data-toc-link="architecture">02 · Architecture</a>
+      <a href="#implementation" class="toc-chip" data-toc-link="implementation">03 · Implementation</a>
+      <a href="#tradeoffs" class="toc-chip" data-toc-link="tradeoffs">04 · Trade-Offs</a>
+      <a href="#studio" class="toc-chip" data-toc-link="studio">05 · Live Demo</a>
+      <a href="#benchmarks" class="toc-chip" data-toc-link="benchmarks">06 · Benchmarks</a>
     </div>
   </nav>
 
@@ -1192,71 +1220,82 @@
   <section class="hero">
     <div class="container">
       <div class="hero-top-row">
-        <div class="eyebrow">100% Free-Tier Serverless Python 3.12 + Bedrock · 0 EC2/GPU Instances · Every Metric Measured Live</div>
+        <div class="eyebrow">LLM Memory &amp; Latency Optimization · Built for AWS ML Inference</div>
         <div class="runtime-pill" id="liveBackendPill">
           <span class="pulse-dot"></span>
-          <span id="liveBackendText">CloudFront + 256 MB Python 3.12 Lambda + Live Bedrock (us-west-2)</span>
+          <span id="liveBackendText">Live on AWS · Powered by Amazon Bedrock</span>
         </div>
       </div>
 
-      <h1>NeuronPulse — ML Graph Compiler Pass, Tiled FlashAttention, Paged KV-Cache &amp; Live Bedrock Serving Profiler</h1>
+      <h1>NeuronPulse: Cutting LLM Memory Use and Latency With Graph Fusion, Tiled Attention, and Paged KV Cache</h1>
       <p class="hero-sub">
-        An executable ML systems engineering workbench built from first principles in Python 3.12 stdlib and hosted serverlessly behind Amazon CloudFront + Private S3 (OAC) + 256 MB AWS Lambda. Every number on this page is measured directly from real numerical execution (<code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> latency, IEEE-754 <code>max_abs_diff &lt; 1e-9</code> checks) and live <code>boto3</code> Amazon Bedrock Converse API calls on <code>us.amazon.nova-micro-v1:0</code> and <code>us.amazon.nova-lite-v1:0</code>.
+        Large language models run out of memory long before they run out of compute. Storing temporary layer outputs, full attention tables, and half-empty caches wastes gigabytes of RAM. NeuronPulse fuses graph operations, computes attention in small tiles, shares prompt caches across conversations, and compares live Amazon Bedrock models.
       </p>
 
-      <div class="headline-pills" id="heroHeadlinePills"></div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#studio">▶ Try the Live Demo ↓</a>
+        <a class="btn btn-secondary" href="#architecture">See How It Works ↓</a>
+        <a class="btn btn-secondary" href="#benchmarks">View Test Results ↓</a>
+      </div>
+
       <div class="kpi-strip" id="heroKpiStrip"></div>
+
+      <div class="pipeline-bar" role="region" aria-label="NeuronPulse Optimization Pipeline">
+        <div class="pipe-step"><span class="pipe-num">01</span> Fuse Graph Operations</div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">02</span> Stream Attention in Small Tiles</div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">03</span> Share Prompt Cache Blocks</div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">04</span> Isolate Faults &amp; Compare Bedrock</div>
+      </div>
     </div>
   </section>
 
   <main class="container">
     <!-- =================================================================== -->
-    <!-- §01 · PROBLEM STATEMENT                                             -->
+    <!-- 01 · PROBLEM                                                        -->
     <!-- =================================================================== -->
     <section id="problem-statement" class="section" data-spy-section="problem-statement">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§01 · Problem Statement</span>
-          <h2 class="section-title">Why Naive LLM Execution Runs Out of Memory Before It Runs Out of Compute</h2>
+          <span class="section-kicker">01 · Problem</span>
+          <h2 class="section-title">Problem</h2>
           <p class="section-desc">
-            Modern Transformer inference is overwhelmingly bottlenecked by intermediate memory allocations, quadratic attention score tables, fragmented KV-cache slabs, and noisy distributed failure cascades. Here is the plain-English picture, a concrete end-to-end walkthrough, and the exact systems bottlenecks NeuronPulse solves.
+            Transformer serving stacks hit memory limits long before compute limits because temporary activations, full attention tables, contiguous KV-cache reservations, and peer timeout cascades consume working RAM and triage time.
           </p>
         </div>
       </div>
 
-      <!-- Plain-English Callout -->
-      <div class="plain-english-callout">
+      <div class="overview-callout">
         <h3>
-          <span class="tag tag-accent">IN PLAIN ENGLISH</span>
-          <span>What Actually Slows Down or Crashes an LLM Serving Stack?</span>
+          <span>Four Memory and Latency Bottlenecks in LLM Serving</span>
         </h3>
         <p>
-          Imagine cooking a 3-step recipe where you dirty a brand-new mixing bowl after every single stir instead of finishing the sauce in one pan (<strong>unfused graph execution</strong>), writing out a giant <code>512 × 512</code> lookup table on paper when you only ever read <code>32</code> rows at a time (<strong>naive attention</strong>), reserving a 1,024-seat banquet table for every customer even if they show up with a party of 50—while printing 64 separate copies of the exact same menu (<strong>contiguous KV-cache</strong>), and having 63 waiters pull the fire alarm because 1 chef dropped a plate (<strong>collective timeout storms</strong>). NeuronPulse implements the exact four systems optimizations that production ML compilers and serving engines use to eliminate that waste—and proves every byte and millisecond live in Python 3.12 without renting a single GPU or EC2 instance.
+          Running an unoptimized model graph allocates a fresh intermediate matrix after every individual operation instead of fusing consecutive steps in place. Standard attention materializes a full <code>512 × 512</code> score table even when scores can be accumulated <code>32</code> rows at a time. Contiguous KV-cache allocators reserve <code>1,024</code> token slots upfront for a 50-token chat while storing <code>64</code> separate copies of the same system prompt. And when one worker in a 64-worker job runs out of memory, the other 63 workers emit timeout errors that arrive out of order. NeuronPulse implements each of these four fixes in Python and measures memory, latency, and Bedrock inference cost directly.
         </p>
       </div>
 
-      <!-- Dual-Lens: Plain-English Intuition + Under the Hood -->
       <div class="dual-lens-grid">
         <div class="lens-box intuition">
-          <span class="lens-kicker">Plain-English Intuition</span>
-          <h4>Why Algorithmic Systems Wins Are Hardware-Independent</h4>
+          <span class="lens-kicker">Memory Scaling</span>
+          <h4>Hardware-Independent Algorithmic Gains</h4>
           <p>
-            Whether tensors live in GPU HBM or CPU heap memory, allocating fewer intermediate matrices, streaming <code>32 × 32</code> attention tiles instead of <code>N × N</code> tables, sharing immutable system-prompt blocks across users, and ranking logs by causal subsystem precedence are pure algorithmic invariants. Measuring them directly with Python's heap allocator (<code>tracemalloc</code>) and IEEE-754 floating-point checks makes every optimization transparent, inspectable, and reproducible for <code>$0.00</code> idle cost.
+            Eliminating temporary matrices, streaming <code>32 × 32</code> attention tiles instead of <code>N × N</code> tables, sharing read-only prompt blocks across requests, and sorting logs by subsystem dependency reduce allocation volume regardless of whether tensors sit in GPU HBM or CPU memory. Tracking allocations with <code>tracemalloc</code> and checking outputs to IEEE-754 precision makes every pass inspectable.
           </p>
         </div>
         <div class="lens-box hood">
-          <span class="lens-kicker">Under the Hood · Complexity &amp; Measured Bounds</span>
-          <h4>Exact Asymptotic &amp; Empirical Reductions</h4>
+          <span class="lens-kicker">Measured Bounds</span>
+          <h4>Empirical Memory &amp; Latency Reductions</h4>
           <p id="s1HoodSummary"></p>
         </div>
       </div>
 
-      <!-- Concrete End-to-End Worked Example -->
       <div class="worked-example-shell">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
           <div>
-            <span class="step-badge">CONCRETE END-TO-END WORKED EXAMPLE</span>
-            <h3 style="font-size:1.12rem; font-weight:800; margin-top:0.4rem;">Tracing One Real Multi-Turn Batch &amp; Transformer Layer Through All 4 Stages</h3>
+            <span class="step-badge">WALKTHROUGH · 64-CHAT MULTI-TURN BATCH</span>
+            <h3 style="font-size:1.12rem; font-weight:800; margin-top:0.4rem;">Tracing a Multi-Turn Batch Across All Four Stages</h3>
           </div>
           <span class="tag tag-pass">64 Concurrent Chats · 256-Token Shared System Prompt · N = 512 Context</span>
         </div>
@@ -1266,10 +1305,10 @@
       <div class="problem-grid">
         <div class="problem-card">
           <div>
-            <span class="step-badge">BOTTLENECK 01 · UNFUSED EAGER GRAPH INTERMEDIATES</span>
-            <h3>Redundant Subgraphs &amp; Materialized MLP Epilogue Allocations</h3>
+            <span class="step-badge">01 · UNFUSED GRAPH INTERMEDIATES</span>
+            <h3>Redundant Subgraphs &amp; Materialized MLP Buffers</h3>
             <p>
-              Exported Transformer computation graphs carry duplicate <code>LayerNorm</code> and projection subexpressions alongside dead debug taps and unfused <code>MatMul → AddBias → GELU</code> chains. Executing each node eagerly allocates separate <code>(B, 4D)</code> intermediate buffers for every step before discarding them.
+              Exported computation graphs carry duplicate <code>LayerNorm</code> and projection nodes alongside unused debug taps and unfused <code>MatMul → AddBias → GELU</code> chains. Eager execution allocates separate <code>(B, 4D)</code> intermediate buffers at every step before freeing them.
             </p>
           </div>
           <div class="problem-stat" id="probStatCompiler"></div>
@@ -1277,10 +1316,10 @@
 
         <div class="problem-card">
           <div>
-            <span class="step-badge">BOTTLENECK 02 · QUADRATIC O(N²) ATTENTION MEMORY</span>
-            <h3>Materialized Score &amp; Softmax Matrices Explode Working Heap</h3>
+            <span class="step-badge">02 · QUADRATIC O(N²) ATTENTION MEMORY</span>
+            <h3>Full Score &amp; Softmax Tables Inflate Working Memory</h3>
             <p>
-              Standard two-pass scaled dot-product attention computes and stores full <code>N × N</code> score and probability matrices prior to multiplying by <code>V</code>. Quadrupling sequence length from <code>128</code> to <code>512</code> inflates attention working heap allocations by <code>14.52×</code> even when head dimension <code>d = 32</code> never changes.
+              Standard two-pass scaled dot-product attention stores full <code>N × N</code> score and probability matrices before multiplying by <code>V</code>. Increasing sequence length from <code>128</code> to <code>512</code> grows working memory by <code>14.52×</code> even when head dimension <code>d = 32</code> stays constant.
             </p>
           </div>
           <div class="problem-stat" id="probStatAttention"></div>
@@ -1288,10 +1327,10 @@
 
         <div class="problem-card">
           <div>
-            <span class="step-badge">BOTTLENECK 03 · CONTIGUOUS KV-CACHE FRAGMENTATION</span>
-            <h3>Upfront Max-Length Slab Reservation Wastes Capacity &amp; Duplicates Prefixes</h3>
+            <span class="step-badge">03 · CONTIGUOUS KV-CACHE WASTE</span>
+            <h3>Max-Length Reservations Waste Slots &amp; Duplicate Prompts</h3>
             <p>
-              Because output decode length is unknown ahead of time, contiguous KV allocators reserve <code>max_seq_len = 1024</code> token slots per active request upfront—wasting nearly half of reserved memory on empty tail slots while duplicating the identical <code>256</code>-token system prompt across all <code>64</code> conversations.
+              Because response length is unknown ahead of time, contiguous KV allocators reserve <code>max_seq_len = 1024</code> token slots per active request upfront. Nearly half of reserved RAM sits empty while identical <code>256</code>-token system prompts are duplicated <code>64</code> times.
             </p>
           </div>
           <div class="problem-stat" id="probStatKv"></div>
@@ -1299,10 +1338,10 @@
 
         <div class="problem-card">
           <div>
-            <span class="step-badge">BOTTLENECK 04 · SYMPTOMATIC BARRIER STORMS &amp; MODEL TIERING</span>
-            <h3>63× Collective Timeout Storms &amp; Unprofiled Serverless Model Routing</h3>
+            <span class="step-badge">04 · TIMEOUT STORMS &amp; MODEL TIERING</span>
+            <h3>63× Collective Timeout Cascades &amp; Model Selection</h3>
             <p>
-              When 1 worker in a 64-rank group hits an OOM trap or socket reset, all 63 healthy peers emit collective barrier timeouts that arrive shuffled at central log collectors. Meanwhile, invoking heavier LLM tiers without live <code>p50</code>/<code>p95</code> and <code>$/1k</code> data wastes latency and budget.
+              When one worker in a 64-rank group hits an out-of-memory fault or socket reset, all 63 peers emit barrier timeouts that arrive shuffled at log collectors. Routing text triage to larger models without measured <code>p50</code>/<code>p95</code> latency and token cost adds avoidable delay.
             </p>
           </div>
           <div class="problem-stat" id="probStatCorrelator"></div>
@@ -1310,37 +1349,37 @@
       </div>
 
       <div class="summary-callout">
-        <strong>Strict Zero-Simulation Guarantee:</strong> Every metric on this page, inside <code>benchmarks/latest_results.json</code>, and returned by <code>/api/*</code> comes from running real Python 3.12 code and live <code>boto3</code> Amazon Bedrock Converse API calls in <code>us-west-2</code>—<strong>0 EC2/GPU instances</strong> and <strong>0 formula-invented hardware numbers</strong>.
+        <strong>Measured Execution:</strong> Every number on this page, in <code>benchmarks/latest_results.json</code>, and returned by <code>/api/*</code> comes from executing Python 3.12 code and live <code>boto3</code> Amazon Bedrock Converse API calls in <code>us-west-2</code>.
       </div>
     </section>
 
     <!-- =================================================================== -->
-    <!-- §02 · SYSTEM ARCHITECTURE                                           -->
+    <!-- 02 · ARCHITECTURE                                                   -->
     <!-- =================================================================== -->
     <section id="architecture" class="section" data-spy-section="architecture">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§02 · System Architecture</span>
-          <h2 class="section-title">Serverless Edge, ML Systems Execution Runtime &amp; Live Bedrock Profiling Topology</h2>
+          <span class="section-kicker">02 · Architecture</span>
+          <h2 class="section-title">Architecture</h2>
           <p class="section-desc">
-            Four-plane serverless architecture connecting Amazon CloudFront + Private S3 (OAC) to the 256 MB Python 3.12 Lambda runtime executing all four ML systems engines and live Amazon Bedrock Converse API profiling in <code>us-west-2</code>. <strong>Click any node on the whiteboard to inspect its module contract and measured telemetry.</strong>
+            Four-plane serverless layout connecting Amazon CloudFront and private S3 storage to the Python 3.12 Lambda runtime and Amazon Bedrock in <code>us-west-2</code>. <strong>Click any component below to inspect its module path and measured metrics.</strong>
           </p>
         </div>
       </div>
 
       <div class="dual-lens-grid">
         <div class="lens-box intuition">
-          <span class="lens-kicker">Plain-English Intuition</span>
-          <h4>Static CDN Speed Meets Live On-Demand Execution</h4>
+          <span class="lens-kicker">Request Lifecycle</span>
+          <h4>Edge Asset Delivery &amp; On-Demand Lambda Execution</h4>
           <p>
-            When you open NeuronPulse, CloudFront serves the static interface straight from a private S3 bucket at edge speed for zero idle server cost. Whenever you click a sandbox button in <code>§05</code>, CloudFront routes your <code>/api/*</code> request directly to a 256 MB Python 3.12 Lambda function that actually compiles the graph, runs tiled attention, allocates paged KV blocks, or calls Amazon Bedrock live—and streams back the fresh measurements.
+            CloudFront serves the static web UI from a private S3 bucket with zero idle server cost. Clicking any demo button in Section 05 sends an uncached <code>/api/*</code> request to a 256 MB Python 3.12 Lambda function that compiles the graph, runs tiled attention, allocates paged KV blocks, or calls Amazon Bedrock live, returning fresh heap and latency figures.
           </p>
         </div>
         <div class="lens-box hood">
-          <span class="lens-kicker">Under the Hood · Origin Routing &amp; IAM Security</span>
-          <h4>SigV4 Origin Access Control + Uncached API Bypass</h4>
+          <span class="lens-kicker">Origin Security &amp; Routing</span>
+          <h4>SigV4 Origin Access Control + Uncached API Path</h4>
           <p>
-            CloudFront distribution <code>E2ZSOS7XVJ55C7</code> mounts two origins: (1) <code>s3://neuronpulse-web-796330847946-us-west-2</code> locked with all four <code>BlockPublicAccess</code> flags and SigV4 OAC; and (2) <code>neuronpulse-api-origin</code> (256 MB Python 3.12 Lambda Function URL) with <code>CachingDisabled</code> policy (<code>Cache-Control: no-store</code>) and least-privilege <code>bedrock:InvokeModel</code> IAM permissions for cross-region Nova inference profiles.
+            CloudFront distribution <code>E2ZSOS7XVJ55C7</code> mounts two origins: (1) <code>s3://neuronpulse-web-796330847946-us-west-2</code> locked with all four <code>BlockPublicAccess</code> flags and SigV4 OAC; and (2) <code>neuronpulse-api-origin</code> (Python 3.12 Lambda Function URL) with <code>CachingDisabled</code> (<code>Cache-Control: no-store</code>) and least-privilege <code>bedrock:InvokeModel</code> permissions.
           </p>
         </div>
       </div>
@@ -1565,15 +1604,15 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- §03 · IMPLEMENTATION                                                -->
+    <!-- 03 · IMPLEMENTATION                                                 -->
     <!-- =================================================================== -->
     <section id="implementation" class="section" data-spy-section="implementation">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§03 · Implementation</span>
-          <h2 class="section-title">Four First-Principles Python 3.12 Modules: Intuition &amp; Exact Mechanics</h2>
+          <span class="section-kicker">03 · Implementation</span>
+          <h2 class="section-title">Implementation</h2>
           <p class="section-desc">
-            Each module pairs a plain-English mental model with the exact data structures, algorithmic complexity, and CPython 3.12 stdlib primitives (<code>math.sumprod</code>, <code>math.erf</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>, and <code>boto3</code>) executing under the hood.
+            Four Python 3.12 modules in <code>neuronpulse/</code> built on standard library primitives (<code>math.sumprod</code>, <code>math.erf</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>) and <code>boto3</code>.
           </p>
         </div>
       </div>
@@ -1586,16 +1625,15 @@
             <span style="color:#93C5FD;">neuronpulse/compiler_ir.py</span>
           </div>
           <div class="module-card-body">
-            <h3>Typed SSA Computation Graph, CSE, DCE &amp; Epilogue Operator Fusion</h3>
+            <h3>Typed SSA Computation Graph, CSE, DCE &amp; Operator Fusion</h3>
             <div class="module-subbox">
-              <div class="module-subbox-title">Plain-English Intuition</div>
               <p>
-                Before running any math, the compiler reads the recipe from end to beginning: it crosses out dishes nobody ordered (dead debug nodes), merges identical prep steps so `LayerNorm` isn't computed twice, and combines `MatMul + Bias + GELU` into a single pass so two huge intermediate matrices never have to be allocated.
+                Before running matrix operations, the compiler walks the graph backward from the return value, removes unused debug nodes, merges duplicate <code>LayerNorm</code> operations, and fuses <code>MatMul + AddBias + GELU</code> into one pass so two intermediate buffers are never allocated.
               </p>
             </div>
             <ul class="module-list">
-              <li><strong>Under the Hood (3-Pass Pipeline):</strong> Pass 1 (<code>pass_constant_fold_and_cse</code>) folds constant scalar arithmetic (<code>0.5 × 2.0 → 1.0</code> + identity elimination) and deduplicates identical SSA value tuples in <code>O(V)</code>. Pass 2 (<code>pass_dead_code_elimination</code>) runs backward reachability from <code>graph.outputs</code>. Pass 3 (<code>pass_matmul_bias_gelu_fusion</code>) checks single-consumer use-counts and emits <code>FusedMatMulBiasGelu</code>.</li>
-              <li><strong>Liveness-Scheduled Execution:</strong> Precomputes <code>last_use[ssa_name]</code> so dead activation buffers are freed immediately upon final consumer completion, verified to <code>max_abs_diff = 0.0</code>.</li>
+              <li><strong>Three-Pass Pipeline:</strong> Pass 1 (<code>pass_constant_fold_and_cse</code>) folds constant scalar math (<code>0.5 × 2.0 → 1.0</code> plus identity removal) and deduplicates identical SSA value tuples in <code>O(V)</code>. Pass 2 (<code>pass_dead_code_elimination</code>) runs backward reachability from <code>graph.outputs</code>. Pass 3 (<code>pass_matmul_bias_gelu_fusion</code>) checks single-consumer use counts and emits <code>FusedMatMulBiasGelu</code>.</li>
+              <li><strong>Liveness Buffer Freeing:</strong> Precomputes <code>last_use[ssa_name]</code> so activation buffers are released right after their final consumer finishes, verified to <code>max_abs_diff = 0.0</code>.</li>
             </ul>
             <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsCompiler"></div>
           </div>
@@ -1604,20 +1642,19 @@
         <!-- Module 2 -->
         <div class="module-card">
           <div class="module-card-head">
-            <span>MODULE 02 · TILED FLASHATTENTION</span>
+            <span>MODULE 02 · TILED ATTENTION</span>
             <span style="color:#93C5FD;">neuronpulse/flash_attention.py</span>
           </div>
           <div class="module-card-body">
-            <h3>Milakov-Gimelshein / Dao Online-Softmax Block-Tiled Attention</h3>
+            <h3>Online-Softmax Block-Tiled FlashAttention</h3>
             <div class="module-subbox">
-              <div class="module-subbox-title">Plain-English Intuition</div>
               <p>
-                Softmax normally needs the maximum score across an entire row before it can divide—forcing naive code to store all <code>N × N</code> scores first. Online softmax keeps a running "best max so far" and rescales its running sum by <code>exp(old_max - new_max)</code> whenever a bigger tile arrives, getting the exact same answer in tiny <code>32 × 32</code> chunks.
+                Standard softmax needs the maximum score across a full row before dividing, which forces naive code to store all <code>N × N</code> scores in memory. Online softmax tracks a running row maximum and rescales its running sum by <code>exp(old_max - new_max)</code> whenever a larger tile arrives, producing the exact same result in <code>32 × 32</code> blocks.
               </p>
             </div>
             <ul class="module-list">
-              <li><strong>Under the Hood (<code>O(B_r · B_c + B_r · d)</code> Working Memory):</strong> Iterates query blocks <code>B_r</code> over key/value blocks <code>B_c</code>, updating <code>m_new = max(m_prev, m_tile)</code>, rescaling factor <code>α = exp(m_prev - m_new)</code>, normalizer <code>l_i = α·l_i + Σ p̃</code>, and output accumulator <code>acc_i = α·acc_i + p̃ @ V_j</code> via C-level <code>math.sumprod</code>.</li>
-              <li><strong>Causal Upper-Triangle Tile Skipping:</strong> When <code>causal=True</code> and <code>j0 &gt; i1 - 1</code>, skips the entire masked tile without computing dot products (<code>28/64</code> tiles skipped at <code>N=512, B=64</code>).</li>
+              <li><strong>Tile Streaming (<code>O(B_r · B_c + B_r · d)</code> Working Memory):</strong> Iterates query blocks <code>B_r</code> over key/value blocks <code>B_c</code>, updating <code>m_new = max(m_prev, m_tile)</code>, rescaling factor <code>α = exp(m_prev - m_new)</code>, normalizer <code>l_i = α·l_i + Σ p̃</code>, and output accumulator <code>acc_i = α·acc_i + p̃ @ V_j</code> via <code>math.sumprod</code>.</li>
+              <li><strong>Causal Upper-Triangle Skipping:</strong> When <code>causal=True</code> and <code>j0 &gt; i1 - 1</code>, skips masked tiles without computing dot products (<code>28/64</code> tiles skipped at <code>N=512, B=64</code>).</li>
             </ul>
             <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsAttention"></div>
           </div>
@@ -1630,16 +1667,15 @@
             <span style="color:#93C5FD;">neuronpulse/paged_kv.py</span>
           </div>
           <div class="module-card-body">
-            <h3>Demand-Paged Block Tables, Chained SHA-256 Prefix Cache &amp; Copy-on-Write</h3>
+            <h3>Demand-Paged Block Tables, Prefix Cache &amp; Copy-on-Write</h3>
             <div class="module-subbox">
-              <div class="module-subbox-title">Plain-English Intuition</div>
               <p>
-                Just like an operating system uses virtual memory pages so programs don't need giant contiguous RAM blocks, Paged KV hands out small 16-token pages only as a conversation grows. All 64 users point their first 16 page-table entries at the exact same physical system-prompt pages—and only copy a page if someone edits it.
+                Similar to OS virtual memory pages, Paged KV allocates fixed 16-token blocks only as a conversation grows. All 64 concurrent requests map their initial page-table entries to the same physical system-prompt blocks, copying a block only if a request modifies a shared token.
               </p>
             </div>
             <ul class="module-list">
-              <li><strong>Under the Hood (Block Table + Prefix Hashing):</strong> Each full 16-token block computes <code>SHA256(parent_hash : token_tuple)[:20]</code>. Hits increment <code>PhysicalKVBlock.ref_count</code> (reaching <code>64</code> across the 256-token system prompt) in <code>O(1)</code> without allocating physical slots; waste is bounded strictly to <code>&lt; 16</code> slots in each sequence's final tail block.</li>
-              <li><strong>Copy-on-Write Forking (<code>mutate_token_cow</code>):</strong> Mutating a shared block (<code>ref_count &gt; 1</code>) allocates 1 private block, copies the 16-slot payload, decrements the shared <code>ref_count</code>, and leaves all 63 peer sequences untouched.</li>
+              <li><strong>Block Table &amp; Prefix Hashing:</strong> Each full 16-token block computes <code>SHA256(parent_hash : token_tuple)[:20]</code>. Cache hits increment <code>PhysicalKVBlock.ref_count</code> (reaching <code>64</code> across the 256-token system prompt) in <code>O(1)</code> without allocating new slots; unused space is bounded to <code>&lt; 16</code> slots in each sequence's tail block.</li>
+              <li><strong>Copy-on-Write Forking (<code>mutate_token_cow</code>):</strong> Mutating a shared block (<code>ref_count &gt; 1</code>) allocates one private block, copies the 16-slot payload, decrements the shared <code>ref_count</code>, and leaves all 63 peer sequences unchanged.</li>
             </ul>
             <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsKv"></div>
           </div>
@@ -1652,16 +1688,15 @@
             <span style="color:#93C5FD;">neuronpulse/correlator.py</span>
           </div>
           <div class="module-card-body">
-            <h3>Causal Multi-Worker Log Correlator &amp; Live Serverless Bedrock Profiler</h3>
+            <h3>Multi-Worker Fault Correlator &amp; Live Bedrock Profiler</h3>
             <div class="module-subbox">
-              <div class="module-subbox-title">Plain-English Intuition</div>
               <p>
-                In a 64-worker collective job, "I ran out of memory" causes "my 63 neighbors timed out waiting for me," never the reverse—even if a neighbor's log packet reaches CloudWatch first. Once the true root worker is isolated, we benchmark Nova Micro vs. Nova Lite live on AWS Bedrock to pick the fastest, cheapest model for automated triage.
+                In a 64-worker collective job, a local memory allocation error causes 63 peers to time out at the next barrier, even if a peer's timeout packet reaches the log collector first. After isolating the root worker, NeuronPulse benchmarks Nova Micro and Nova Lite live on Amazon Bedrock to compare latency and cost per 1,000 triage requests.
               </p>
             </div>
             <ul class="module-list">
-              <li><strong>Under the Hood (Causal Precedence Key):</strong> Sorts ingested events in <code>O(K log K)</code> by <code>(-SUBSYSTEM_CAUSAL_PRIORITY[subsystem], monotonic_ns - earliest_ns, rank)</code>, compressing <code>64</code> rank alarms into <code>1</code> root incident with <code>100.0%</code> accuracy across <code>48</code> shuffled streams.</li>
-              <li><strong>Live Serverless Bedrock Profiling:</strong> Calls <code>boto3.client("bedrock-runtime", region_name="us-west-2").converse(...)</code> after a 1-call TLS warmup, recording AWS server <code>metrics.latencyMs</code>, client RTT, token throughput, and exact on-demand USD/1k-requests.</li>
+              <li><strong>Causal Precedence Ordering:</strong> Sorts ingested events in <code>O(K log K)</code> by <code>(-SUBSYSTEM_CAUSAL_PRIORITY[subsystem], monotonic_ns - earliest_ns, rank)</code>, compressing <code>64</code> rank alarms into <code>1</code> root incident with <code>100.0%</code> accuracy across <code>48</code> shuffled streams.</li>
+              <li><strong>Live Bedrock Profiling:</strong> Calls <code>boto3.client("bedrock-runtime", region_name="us-west-2").converse(...)</code> after a 1-call TLS warmup, recording server <code>metrics.latencyMs</code>, client round-trip time, token throughput, and exact on-demand USD per 1,000 requests.</li>
             </ul>
             <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsBedrock"></div>
           </div>
@@ -1670,32 +1705,32 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- §04 · DESIGN TRADE-OFFS                                             -->
+    <!-- 04 · TRADE-OFFS                                                     -->
     <!-- =================================================================== -->
     <section id="tradeoffs" class="section" data-spy-section="tradeoffs">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§04 · Design Trade-Offs</span>
-          <h2 class="section-title">Architectural Decisions, Complexity Bounds &amp; Honest Engineering Costs</h2>
+          <span class="section-kicker">04 · Trade-Offs</span>
+          <h2 class="section-title">Trade-Offs</h2>
           <p class="section-desc">
-            Every systems optimization trades one resource or constraint for another. Below is both the plain-English summary and the exact quantitative trade-off matrix measured across our four modules.
+            Every optimization exchanges upfront pass time, indirection, or modality support for lower peak memory, higher concurrency, or lower inference latency.
           </p>
         </div>
       </div>
 
       <div class="dual-lens-grid">
         <div class="lens-box intuition">
-          <span class="lens-kicker">Plain-English Intuition</span>
-          <h4>No Free Lunch: What Each Optimization Costs</h4>
+          <span class="lens-kicker">Resource Costs</span>
+          <h4>What Each Optimization Gives Up</h4>
           <p>
-            Fusing operators spends a few milliseconds analyzing the graph ahead of time and throws away intermediate tensors you would only need if you were computing training gradients. Tiling attention saves 95% of memory, though in pure Python without causal masking the extra per-tile rescaling adds a few milliseconds of loop overhead. Paged KV trades simple array indexing for a page-table lookup, and Nova Micro trades multimodal vision inputs for nearly 2× faster text latency at half the cost.
+            Operator fusion spends a few milliseconds analyzing the graph ahead of time and discards intermediate tensors that backward training passes would otherwise retain. Tiled attention cuts memory by 95%, though on unmasked bidirectional runs the per-tile rescaling adds a small scalar loop cost in pure Python. Paged KV adds a block-table indirection step, and Nova Micro supports text-only inputs in exchange for lower latency and cost.
           </p>
         </div>
         <div class="lens-box hood">
-          <span class="lens-kicker">Under the Hood · When Each Trade-Off Pays Off</span>
-          <h4>Inference &amp; Multi-Tenant Serving Regime</h4>
+          <span class="lens-kicker">Operating Regimes</span>
+          <h4>Inference &amp; Multi-Tenant Serving</h4>
           <p>
-            During inference (no backward autograd tape required), compiler fusion + last-use freeing is strictly dominant (`-87.8%` heap, `1.92×` faster). For autoregressive decoding (`causal=True`), tiled FlashAttention wins on <em>both</em> memory (`-93.8%`) and wall-clock latency (`115.8ms → 83.6ms` at `N=512, B=64`). And whenever multi-turn prompts share a system instruction, `block_size=16` Paged KV boosts concurrency `2.46×` for only `14.24 ms` of Python allocator bookkeeping across 64 requests.
+            During inference (no autograd tape needed), compiler fusion and last-use freeing reduce peak heap by <code>87.8%</code> and run <code>1.92×</code> faster. Under causal autoregressive masking (<code>causal=True</code>), tiled FlashAttention lowers both memory (<code>-93.8%</code>) and wall-clock time (<code>115.8 ms → 83.6 ms</code> at <code>N=512, B=64</code>). When multi-turn chats share a system prompt, <code>block_size=16</code> Paged KV raises concurrency <code>2.46×</code> with <code>14.24 ms</code> of total allocator bookkeeping across 64 requests.
           </p>
         </div>
       </div>
@@ -1704,15 +1739,15 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- §05 · INTERACTIVE STUDIO                                            -->
+    <!-- 05 · LIVE DEMO                                                      -->
     <!-- =================================================================== -->
     <section id="studio" class="section" data-spy-section="studio">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§05 · Interactive Studio</span>
-          <h2 class="section-title">Four Live Lambda-Executed ML Systems Sandboxes</h2>
+          <span class="section-kicker">05 · Live Demo</span>
+          <h2 class="section-title">Live Demo</h2>
           <p class="section-desc">
-            Every control below invokes the live 256 MB Python 3.12 AWS Lambda backend (<code>/api/*</code>) and streams back fresh <code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> milliseconds, and IEEE-754 equivalence checks. Follow the 3-step guide at the top of each tab to explore.
+            Each tab calls the Python 3.12 AWS Lambda backend (<code>/api/*</code>) and returns live <code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> latency, and IEEE-754 equivalence checks.
           </p>
         </div>
         <span class="tag tag-pass" id="studioExecStatus">Ready · Initialized from Measured CPython 3.12.14 Snapshot</span>
@@ -1720,23 +1755,23 @@
 
       <div class="tab-bar" role="tablist">
         <button type="button" class="tab-btn active" data-tab="tab-compiler">
-          <span class="tab-btn-eyebrow">Sandbox 01 · /api/compiler/optimize</span>
-          <span class="tab-btn-title">Compiler IR Optimizer</span>
+          <span class="tab-btn-eyebrow">Demo 01 · /api/compiler/optimize</span>
+          <span class="tab-btn-title">1. Fuse Computation Graphs</span>
           <span class="tab-btn-metric" id="tabMetricCompiler"></span>
         </button>
         <button type="button" class="tab-btn" data-tab="tab-attention">
-          <span class="tab-btn-eyebrow">Sandbox 02 · /api/attention/run</span>
-          <span class="tab-btn-title">Tiled FlashAttention vs O(N²)</span>
+          <span class="tab-btn-eyebrow">Demo 02 · /api/attention/run</span>
+          <span class="tab-btn-title">2. Run Tiled Attention</span>
           <span class="tab-btn-metric" id="tabMetricAttention"></span>
         </button>
         <button type="button" class="tab-btn" data-tab="tab-kvcache">
-          <span class="tab-btn-eyebrow">Sandbox 03 · /api/kvcache/run</span>
-          <span class="tab-btn-title">Paged KV-Cache + CoW Allocator</span>
+          <span class="tab-btn-eyebrow">Demo 03 · /api/kvcache/run</span>
+          <span class="tab-btn-title">3. Share Paged KV Cache</span>
           <span class="tab-btn-metric" id="tabMetricKv"></span>
         </button>
         <button type="button" class="tab-btn" data-tab="tab-bedrock">
-          <span class="tab-btn-eyebrow">Sandbox 04 · /api/correlator &amp; /api/bedrock</span>
-          <span class="tab-btn-title">Fault Correlator + Nova Profiler</span>
+          <span class="tab-btn-eyebrow">Demo 04 · /api/correlator &amp; /api/bedrock</span>
+          <span class="tab-btn-title">4. Isolate Faults &amp; Compare Bedrock</span>
           <span class="tab-btn-metric" id="tabMetricBedrock"></span>
         </button>
       </div>
@@ -1744,11 +1779,10 @@
       <!-- TAB 1: COMPILER IR OPTIMIZER -->
       <div class="tab-panel active" id="tab-compiler">
         <div class="sandbox-howto">
-          <div class="sandbox-howto-title">How to Try This Sandbox (What to Click &amp; What to Watch)</div>
           <div class="sandbox-howto-steps">
-            <div><strong>1. Pick a Graph &amp; Shape:</strong> Switch between <code>stacked_2layer_mlp</code>, <code>transformer_mlp_block</code>, and <code>wide_ffn_epilogue</code> (6× wide FFN) or drag the Batch/Hidden sliders.</div>
-            <div><strong>2. Run Live on Lambda:</strong> Click <strong>Compile &amp; Execute Both IR Graphs Live</strong> to run all 3 compiler passes + both interpreters on the 256 MB Python 3.12 Lambda.</div>
-            <div><strong>3. Inspect the Diff:</strong> Watch <code>tracemalloc</code> peak bytes drop by <code>&gt;80%</code>, check <code>max_abs_diff &lt; 1e-9</code>, and see <code>MatMul + AddBias + GELU</code> collapse into <code>FusedMatMulBiasGelu</code> in the right-hand IR pane.</div>
+            <div><strong>1. Select a Graph &amp; Shape:</strong> Choose <code>stacked_2layer_mlp</code>, <code>transformer_mlp_block</code>, or <code>wide_ffn_epilogue</code>, and adjust the Batch or Hidden sliders.</div>
+            <div><strong>2. Compile &amp; Run:</strong> Click <strong>Compile &amp; Execute Both IR Graphs Live</strong> to run all three compiler passes and both interpreters on AWS Lambda.</div>
+            <div><strong>3. Compare Outputs:</strong> Inspect the peak heap reduction, verify <code>max_abs_diff &lt; 1e-9</code>, and compare the unfused and fused SSA graphs side by side.</div>
           </div>
         </div>
 
@@ -1819,11 +1853,10 @@
       <!-- TAB 2: TILED FLASHATTENTION -->
       <div class="tab-panel" id="tab-attention">
         <div class="sandbox-howto">
-          <div class="sandbox-howto-title">How to Try This Sandbox (What to Click &amp; What to Watch)</div>
           <div class="sandbox-howto-steps">
-            <div><strong>1. Test Sequence Scaling:</strong> Compare <code>N = 128</code> vs. <code>N = 512</code> and click <strong>Execute Naive vs. Tiled FlashAttention Live</strong> to see naive memory jump <code>14.5×</code> while tiled memory stays under <code>0.9 MB</code>.</div>
-            <div><strong>2. Flip Causal Masking On:</strong> Switch <em>Attention Masking</em> to <code>causal = True</code> with <code>block_size = 64</code>—watch <code>28</code> upper-triangular tiles get skipped so tiled attention beats naive on speed too!</div>
-            <div><strong>3. Run Full Scaling Sweep:</strong> Click <strong>Run Live N = 128, 256, 512 Scaling Sweep</strong> to populate the complete <code>O(N²)</code> vs. <code>O(N)</code> verification table live from Lambda.</div>
+            <div><strong>1. Test Sequence Scaling:</strong> Compare <code>N = 128</code> vs. <code>N = 512</code> and click <strong>Execute Naive vs. Tiled FlashAttention Live</strong> to see naive memory jump <code>14.5×</code> while tiled memory stays below <code>0.9 MB</code>.</div>
+            <div><strong>2. Enable Causal Masking:</strong> Switch <em>Attention Masking</em> to <code>causal = True</code> with <code>block_size = 64</code> to skip <code>28</code> upper-triangular tiles and reduce execution latency.</div>
+            <div><strong>3. Run Full Scaling Sweep:</strong> Click <strong>Run Live N = 128, 256, 512 Scaling Sweep</strong> to populate the <code>O(N²)</code> vs. <code>O(N)</code> comparison table live from AWS Lambda.</div>
           </div>
         </div>
 
@@ -1893,11 +1926,10 @@
       <!-- TAB 3: PAGED KV-CACHE + COW ALLOCATOR -->
       <div class="tab-panel" id="tab-kvcache">
         <div class="sandbox-howto">
-          <div class="sandbox-howto-title">How to Try This Sandbox (What to Click &amp; What to Watch)</div>
           <div class="sandbox-howto-steps">
-            <div><strong>1. Tighten the Memory Cap:</strong> Drag <em>Admission Memory Cap</em> down from <code>1280 MB</code> to <code>640 MB</code> and click <strong>Execute Paged KV + CoW Allocator Live</strong> to watch how many more concurrent chats Paged KV admits before OOM.</div>
-            <div><strong>2. Toggle Shared System Prefix:</strong> Change <em>Shared System Prompt Prefix</em> from <code>256 tokens</code> to <code>0 tokens</code> to isolate pure demand-paging gains vs. SHA-256 prefix deduplication gains.</div>
-            <div><strong>3. Verify Copy-on-Write:</strong> Inspect the green banner and block table: <code>req-000</code> forks shared Block <code>0</code> into a new private physical block on write while <code>req-001..005</code> safely keep pointing to Block <code>0</code>.</div>
+            <div><strong>1. Lower the Memory Cap:</strong> Move <em>Admission Memory Cap</em> from <code>1280 MB</code> down to <code>640 MB</code> and click <strong>Execute Paged KV + CoW Allocator Live</strong> to compare admitted concurrent chats.</div>
+            <div><strong>2. Toggle Shared System Prefix:</strong> Switch <em>Shared System Prompt Prefix</em> between <code>256 tokens</code> and <code>0 tokens</code> to separate demand-paging gains from SHA-256 prefix sharing.</div>
+            <div><strong>3. Inspect Copy-on-Write:</strong> Review the block table: <code>req-000</code> forks shared Block <code>0</code> into a private block on write while <code>req-001..005</code> continue referencing Block <code>0</code>.</div>
           </div>
         </div>
 
@@ -1962,11 +1994,10 @@
       <!-- TAB 4: FAULT CORRELATOR + LIVE BEDROCK PROFILER -->
       <div class="tab-panel" id="tab-bedrock">
         <div class="sandbox-howto">
-          <div class="sandbox-howto-title">How to Try This Sandbox (What to Click &amp; What to Watch)</div>
           <div class="sandbox-howto-steps">
-            <div><strong>1. Correlate Shuffled Worker Alarms (Left):</strong> Choose a fault mode, move the <em>Root Fault Worker Rank</em> slider to any worker <code>0..63</code>, and click <strong>Correlate 64-Worker Burst</strong>—watch causal ranking isolate your exact worker while first-arrival picks a noisy symptom rank.</div>
-            <div><strong>2. Call Live AWS Bedrock (Right):</strong> Edit the ML systems prompt (or keep the default) and click <strong>Invoke Live Nova Micro vs. Nova Lite on AWS Bedrock</strong>.</div>
-            <div><strong>3. Compare Live Latency &amp; Cost:</strong> Watch real <code>us-west-2</code> Bedrock Converse responses stream back with live server <code>latencyMs</code>, <code>tokens/sec</code>, token counts, and exact <code>USD / 1k requests</code>.</div>
+            <div><strong>1. Correlate Shuffled Worker Alarms:</strong> Select a fault scenario, set <em>Root Fault Worker Rank</em> to any worker <code>0..63</code>, and click <strong>Correlate 64-Worker Burst</strong> to isolate the root rank from 63 peer timeouts.</div>
+            <div><strong>2. Invoke Live Amazon Bedrock:</strong> Edit the diagnostic prompt on the right (or keep the default) and click <strong>Invoke Live Nova Micro vs. Nova Lite on AWS Bedrock</strong>.</div>
+            <div><strong>3. Compare Latency &amp; Cost:</strong> Review the live <code>us-west-2</code> Bedrock Converse responses alongside server <code>latencyMs</code>, <code>tokens/sec</code>, token counts, and <code>USD / 1k requests</code>.</div>
           </div>
         </div>
 
@@ -2038,30 +2069,30 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- §06 · BENCHMARKS                                                    -->
+    <!-- 06 · BENCHMARKS                                                     -->
     <!-- =================================================================== -->
     <section id="benchmarks" class="section" data-spy-section="benchmarks" style="border-bottom:none;">
       <div class="section-header">
         <div>
-          <span class="section-kicker">§06 · Benchmarks</span>
-          <h2 class="section-title">End-to-End Executed Benchmark Ledger (CPython 3.12.14 + Live Bedrock us-west-2)</h2>
+          <span class="section-kicker">06 · Benchmarks</span>
+          <h2 class="section-title">Benchmarks</h2>
           <p class="section-desc" id="benchEnvDesc"></p>
         </div>
       </div>
 
       <div class="dual-lens-grid">
         <div class="lens-box intuition">
-          <span class="lens-kicker">Plain-English Intuition</span>
-          <h4>How to Read These Numbers</h4>
+          <span class="lens-kicker">Numerical Verification</span>
+          <h4>IEEE-754 Equivalence &amp; Connection Warmup</h4>
           <p>
-            Every row compares our optimized algorithm directly against its unoptimized baseline on the exact same inputs in the same CPython 3.12.14 process, checking that the numerical outputs agree to 17 decimal places (`max_abs_diff ≤ 5.55 × 10⁻¹⁷`). And for AWS Bedrock, both models were invoked back-to-back in `us-west-2` after a connection warmup call so TLS setup never distorts inference latency.
+            Every row compares the optimized algorithm against its baseline on identical inputs in the same CPython 3.12.14 process and verifies numerical agreement to 17 decimal places (<code>max_abs_diff ≤ 5.55 × 10⁻¹⁷</code>). For Amazon Bedrock, both models run back to back in <code>us-west-2</code> after a connection warmup call so TLS setup does not skew inference latency.
           </p>
         </div>
         <div class="lens-box hood">
-          <span class="lens-kicker">Under the Hood · Measurement Methodology</span>
-          <h4>Zero-Overhead Timing &amp; Isolated Heap Windows</h4>
+          <span class="lens-kicker">Measurement Setup</span>
+          <h4>Isolated Heap &amp; Timing Windows</h4>
           <p>
-            Peak heap bytes are captured inside isolated <code>gc.collect() → tracemalloc.reset_peak() → get_traced_memory()</code> windows with input/output buffers pre-allocated outside the window where appropriate, while wall-clock milliseconds are recorded in separate uninstrumented <code>time.perf_counter()</code> passes so profiler hooks never skew latency.
+            Peak heap bytes are recorded inside isolated <code>gc.collect() → tracemalloc.reset_peak() → get_traced_memory()</code> windows with input and output buffers allocated outside the window where appropriate, while wall-clock milliseconds are measured in separate uninstrumented <code>time.perf_counter()</code> runs so profiler hooks do not add overhead.
           </p>
         </div>
       </div>
@@ -2080,26 +2111,26 @@
       </div>
 
       <div class="code-header">
-        <span>REPRODUCE 100% OF BENCHMARKS LOCALLY (ZERO EC2 / GPU COST)</span>
+        <span>REPRODUCE BENCHMARKS LOCALLY</span>
         <span>benchmarks/run_benchmarks.py</span>
       </div>
-      <pre class="code-box"># 1. Run all unit &amp; Lambda API integration tests
+      <pre class="code-box"># 1. Run unit &amp; Lambda API integration tests
 PYTHONPATH=. python3 -m unittest discover -s tests -v
 
-# 2. Execute all 4 Python 3.12 ML systems benchmarks + live AWS Bedrock (us-west-2)
+# 2. Run all four Python 3.12 benchmarks + live Amazon Bedrock (us-west-2)
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 AWS_PROFILE=portfolio AWS_DEFAULT_REGION=us-west-2 PYTHONPATH=. python3 -m benchmarks.run_benchmarks
 
-# 3. Launch local interactive studio (http://127.0.0.1:3096)
+# 3. Start local web server (http://127.0.0.1:3096)
 PYTHONPATH=. python3 -m neuronpulse.server</pre>
     </section>
 
     <footer class="footer">
       <div>
-        <strong>NeuronPulse v2.0</strong> · 100% Serverless Python 3.12 + Amazon CloudFront + S3 (OAC) + AWS Bedrock Nova (<code>us-west-2</code>)
+        <strong>NeuronPulse</strong> · LLM Memory &amp; Latency Optimization · Powered by Amazon Bedrock (<code>us-west-2</code>)
       </div>
       <div class="mono" style="font-size:0.73rem;">
-        0 EC2/GPU Instances · $0.00/hr Idle · Every Metric Measured Live
+        <a href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os" target="_blank" rel="noopener" style="color:var(--ink);">GitHub Repository</a>
       </div>
     </footer>
   </main>
@@ -2395,38 +2426,26 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         </div>
       `;
 
-      document.getElementById('heroHeadlinePills').innerHTML = `
-        <div class="headline-pill"><span>-${c2Init.peak_memory_saved_pct}%</span> Compiler Peak Tensor Bytes (${c2Init.unoptimized_op_nodes}→${c2Init.optimized_op_nodes} Ops · ${c2Init.execution_speedup_x}×)</div>
-        <div class="headline-pill"><span>-${faInit.memory_reduction_pct}%</span> Tiled FlashAttention Heap @ N=${faInit.seq_len} (${faInit.memory_compression_x}×)</div>
-        <div class="headline-pill"><span>${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}%</span> KV Fragmentation (${kvInit.comparison.concurrency_gain_x}× Concurrency)</div>
-        <div class="headline-pill"><span>${brInit.nova_micro.p50_bedrock_ms}ms vs ${brInit.nova_lite.p50_bedrock_ms}ms</span> Live Bedrock Nova Micro vs Lite p50</div>
-      `;
-
       document.getElementById('heroKpiStrip').innerHTML = `
         <div class="card kpi-card">
           <div class="kpi-val">-${c2Init.peak_memory_saved_pct}%</div>
-          <div class="kpi-label">Compiler Pass Peak Memory Saved</div>
-          <div class="kpi-sub">${fmtBytes(c2Init.unoptimized_peak_bytes)} → ${fmtBytes(c2Init.optimized_peak_bytes)} · diff=${fmtExp(c2Init.max_abs_diff)}</div>
+          <div class="kpi-label">Less Graph Memory</div>
+          <div class="kpi-sub">Fusing layer operations shrinks peak tensor RAM from ${fmtBytes(c2Init.unoptimized_peak_bytes)} to ${fmtBytes(c2Init.optimized_peak_bytes)} (${c2Init.execution_speedup_x}× faster)</div>
         </div>
         <div class="card kpi-card">
           <div class="kpi-val">-${faInit.memory_reduction_pct}%</div>
-          <div class="kpi-label">Tiled FlashAttention Heap (N=${faInit.seq_len})</div>
-          <div class="kpi-sub">${fmtBytes(faInit.naive_peak_bytes)} → ${fmtBytes(faInit.flash_peak_bytes)} (${faInit.memory_compression_x}×) · diff=${fmtExp(faInit.max_abs_diff)}</div>
+          <div class="kpi-label">Less Attention Memory</div>
+          <div class="kpi-sub">Streaming ${faInit.seq_len}-token attention in ${faInit.block_size}×${faInit.block_size} tiles cuts working RAM from ${fmtBytes(faInit.naive_peak_bytes)} to ${fmtBytes(faInit.flash_peak_bytes)}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-val">${kvInit.paged_cow_allocator.internal_fragmentation_pct}% Frag</div>
-          <div class="kpi-label">Paged KV + CoW (${kvInit.workload.num_requests} Multi-Turn Reqs)</div>
-          <div class="kpi-sub">vs ${kvInit.contiguous_baseline.internal_fragmentation_pct}% Contiguous · ${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent} Admitted</div>
-        </div>
-        <div class="card kpi-card">
-          <div class="kpi-val">${corrInit.causal_correlator_accuracy_pct}%</div>
-          <div class="kpi-label">Causal Worker Fault Isolation</div>
-          <div class="kpi-sub">${corrInit.causal_correlator_correct}/${corrInit.trials} Shuffled Streams vs ${corrInit.arrival_order_accuracy_pct}% Arrival (${corrInit.wall_clock_ms}ms)</div>
+          <div class="kpi-val">${kvInit.comparison.concurrency_gain_x}×</div>
+          <div class="kpi-label">More Concurrent Chats</div>
+          <div class="kpi-sub">Paging 16-token cache blocks cuts waste from ${kvInit.contiguous_baseline.internal_fragmentation_pct}% to ${kvInit.paged_cow_allocator.internal_fragmentation_pct}% (${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent} chats in ${kvInit.comparison.memory_cap_mb} MB)</div>
         </div>
         <div class="card kpi-card">
           <div class="kpi-val">${brInit.nova_micro.p50_bedrock_ms} ms</div>
-          <div class="kpi-label">Live Nova Micro p50 (${brInit.nova_micro.tokens_per_sec} tok/s)</div>
-          <div class="kpi-sub">$${brInit.nova_micro.usd_per_1k_requests}/1k reqs (-${brInit.head_to_head.micro_cost_savings_vs_lite_pct}% vs Nova Lite)</div>
+          <div class="kpi-label">Bedrock Nova Micro Latency</div>
+          <div class="kpi-sub">${brInit.head_to_head.micro_vs_lite_p50_speedup_x}× faster median latency and ${brInit.head_to_head.micro_cost_savings_vs_lite_pct}% lower cost than Nova Lite, with ${corrInit.causal_correlator_accuracy_pct}% fault isolation</div>
         </div>
       `;
 
@@ -3089,7 +3108,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     fetch('/api/health').then(r => r.ok ? r.json() : null).then(h => {
       if (h && h.status === 'ok') {
         document.getElementById('liveBackendText').textContent =
-          `Live Lambda Python ${h.python_version} (${h.aws_region}) · 0 EC2/GPU · ${h.handler_wall_ms}ms ping`;
+          'Live on AWS · Powered by Amazon Bedrock';
       }
     }).catch(() => {});
   </script>
