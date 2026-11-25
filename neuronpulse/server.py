@@ -1,4 +1,10 @@
-"""HTTP Server & AWS CloudFront `/api/*` Lambda Origin Handler for NeuronPulse."""
+"""HTTP Server & AWS CloudFront `/api/*` Lambda Origin Handler for NeuronPulse.
+
+Every `/api/*` endpoint executes the real Python 3.12 ML systems algorithms live
+(`compiler_ir`, `flash_attention`, `paged_kv`, `correlator`, and live `boto3`
+Amazon Bedrock `us.amazon.nova-micro-v1:0` & `us.amazon.nova-lite-v1:0`) and
+returns real measured `wall_clock_ms`, `tracemalloc` `peak_bytes`, and `max_abs_diff`.
+"""
 from __future__ import annotations
 
 import base64
@@ -6,35 +12,60 @@ import json
 import mimetypes
 import os
 import platform
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-from .copilot import ask_cluster_copilot
-from .correlator import CrossNodeErrorCorrelator, execute_automated_repair
-from .profiler import compare_serving_configs
-from .topology import UltraServerCluster
+from .compiler_ir import run_compiler_pass_benchmark
+from .correlator import (
+    DEFAULT_BENCHMARK_PROMPTS,
+    DISTRIBUTED_FAULT_SCENARIOS,
+    BedrockModelProfiler,
+    CrossNodeErrorCorrelator,
+    build_worker_fault_stream,
+    run_correlator_benchmark,
+)
+from .flash_attention import benchmark_attention_pair, run_attention_scaling_sweep
+from .paged_kv import run_paged_kv_benchmark
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT_DIR / "web"
 DOCS_DIR = ROOT_DIR / "docs"
+BENCHMARK_JSON_PATH = ROOT_DIR / "benchmarks" / "latest_results.json"
 
-CLUSTER = UltraServerCluster()
-CORRELATOR = CrossNodeErrorCorrelator()
-ACTIVE_PROFILE_CFG: Dict[str, Any] = {
-    "tp_degree": 8,
-    "precision": "FP8",
-    "batch_size": 16,
-    "nki_flash_fusion": True,
-    "seq_len": 4096,
-}
+# Optional hook used strictly by offline unit tests so `unittest` stays fast & offline
+_TEST_BEDROCK_CONVERSE_FN: Optional[Callable[..., Dict[str, Any]]] = None
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
+
+
+def _load_saved_benchmarks() -> Optional[Dict[str, Any]]:
+    if BENCHMARK_JSON_PATH.is_file():
+        try:
+            return json.loads(BENCHMARK_JSON_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+
+def _merged_params(query: Dict[str, str], body: Dict[str, Any]) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(query)
+    merged.update(body)
+    return merged
+
+
+def _to_bool(val: Any, default: bool = False) -> bool:
+    if isinstance(val, bool):
+        return val
+    if val is None:
+        return default
+    return str(val).strip().lower() in ("1", "true", "yes", "on")
 
 
 def route_api_request(
@@ -45,105 +76,168 @@ def route_api_request(
     request_id: str = "local",
 ) -> Tuple[int, Dict[str, Any]]:
     """Pure router shared by local HTTP server and AWS Lambda `/api/*` origin behind CloudFront."""
+    t_req_start = time.perf_counter()
+    params = _merged_params(query, body)
+
     try:
         if method == "GET" and path == "/api/health":
-            snap = CLUSTER.snapshot()
             return 200, {
                 "status": "ok",
-                "service": "neuronpulse-cluster-os",
-                "delivery": os.environ.get("NEURONPULSE_DELIVERY", "cloudfront-s3-oac + api-origin"),
-                "aws_region": os.environ.get("AWS_REGION", "us-west-2"),
-                "bedrock_model": os.environ.get("NEURONPULSE_BEDROCK_MODEL", "us.amazon.nova-lite-v1:0"),
+                "service": "neuronpulse",
+                "architecture": "100%-serverless-s3-cloudfront-lambda-bedrock",
+                "ec2_or_gpu_instances": 0,
+                "idle_cost_usd": 0.0,
+                "delivery": os.environ.get("NEURONPULSE_DELIVERY", "cloudfront-s3-oac + python3.12-lambda"),
+                "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2")),
+                "bedrock_models": [
+                    "us.amazon.nova-micro-v1:0",
+                    "us.amazon.nova-lite-v1:0",
+                ],
                 "python_version": platform.python_version(),
                 "request_id": request_id,
-                "cluster_id": snap["cluster_id"],
-                "total_neuron_cores": snap["summary"]["total_neuron_cores"],
-                "healthy_cores": snap["summary"]["healthy_cores"],
+                "handler_wall_ms": round((time.perf_counter() - t_req_start) * 1000.0, 3),
             }
 
         if method == "GET" and path == "/api/state":
-            snap = CLUSTER.snapshot()
-            prof = compare_serving_configs(**ACTIVE_PROFILE_CFG)
+            saved = _load_saved_benchmarks()
+            live_compiler = run_compiler_pass_benchmark(
+                preset="stacked_2layer_mlp",
+                batch_tokens=48,
+                hidden_dim=48,
+                repeats=1,
+            )
+            live_attn = benchmark_attention_pair(seq_len=256, head_dim=32, block_size=32, causal=False)
+            live_kv = run_paged_kv_benchmark(
+                num_requests=64,
+                block_size=16,
+                max_seq_len=1024,
+                system_prompt_tokens=256,
+                memory_cap_mb=1280,
+            )
+            live_corr = run_correlator_benchmark(trials=48, num_workers=64, seed=42)
             return 200, {
                 "request_id": request_id,
-                "cluster": snap,
-                "profiler": prof,
+                "python_version": platform.python_version(),
+                "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2")),
+                "handler_wall_ms": round((time.perf_counter() - t_req_start) * 1000.0, 3),
+                "saved_benchmarks": saved,
+                "live_snapshot": {
+                    "compiler_ir": live_compiler,
+                    "flash_attention": live_attn,
+                    "paged_kv": live_kv,
+                    "correlator": live_corr,
+                },
             }
 
-        if method == "POST" and path == "/api/faults/inject":
-            fault_id = str(body.get("fault_id") or "fault_hbm_ecc").strip()
-            CLUSTER.inject_fault(fault_id)
-            corr = CORRELATOR.correlate(CLUSTER.raw_events)
-            CLUSTER.last_correlation = corr
-            return 200, {
-                "request_id": request_id,
-                "status": "FAULT_INJECTED",
-                "fault_id": fault_id,
-                "correlation": corr,
-                "cluster": CLUSTER.snapshot(),
-            }
-
-        if method == "POST" and path == "/api/repair/execute":
-            res = execute_automated_repair(CLUSTER)
+        if method in ("GET", "POST") and path == "/api/compiler/optimize":
+            preset = str(params.get("preset") or "stacked_2layer_mlp").strip()
+            batch_tokens = int(params.get("batch_tokens", 64))
+            hidden_dim = int(params.get("hidden_dim", 64))
+            repeats = max(1, min(5, int(params.get("repeats", 2))))
+            res = run_compiler_pass_benchmark(
+                preset=preset,
+                batch_tokens=batch_tokens,
+                hidden_dim=hidden_dim,
+                repeats=repeats,
+            )
             res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
             return 200, res
 
-        if method == "POST" and path == "/api/profiler/simulate":
-            tp_degree = int(body.get("tp_degree", ACTIVE_PROFILE_CFG["tp_degree"]))
-            precision = str(body.get("precision", ACTIVE_PROFILE_CFG["precision"])).upper()
-            batch_size = int(body.get("batch_size", ACTIVE_PROFILE_CFG["batch_size"]))
-            nki_flash = bool(body.get("nki_flash_fusion", ACTIVE_PROFILE_CFG["nki_flash_fusion"]))
-            seq_len = int(body.get("seq_len", ACTIVE_PROFILE_CFG["seq_len"]))
-            prof = compare_serving_configs(
-                tp_degree=tp_degree,
-                precision=precision,
-                batch_size=batch_size,
-                nki_flash_fusion=nki_flash,
+        if method in ("GET", "POST") and path == "/api/attention/run":
+            seq_len = int(params.get("seq_len", 256))
+            head_dim = int(params.get("head_dim", 32))
+            block_size = int(params.get("block_size", 32))
+            causal = _to_bool(params.get("causal"), default=False)
+            include_sweep = _to_bool(params.get("include_sweep"), default=False)
+
+            res = benchmark_attention_pair(
                 seq_len=seq_len,
+                head_dim=head_dim,
+                block_size=block_size,
+                causal=causal,
             )
-            ACTIVE_PROFILE_CFG.update(
-                {
-                    "tp_degree": tp_degree,
-                    "precision": precision,
-                    "batch_size": batch_size,
-                    "nki_flash_fusion": nki_flash,
-                    "seq_len": seq_len,
-                }
+            if include_sweep:
+                res["scaling_sweep"] = run_attention_scaling_sweep(
+                    seq_lengths=(128, 256, 512),
+                    head_dim=head_dim,
+                    block_size=min(block_size, 64),
+                    causal=causal,
+                )
+            res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
+            return 200, res
+
+        if method in ("GET", "POST") and path == "/api/kvcache/run":
+            num_requests = int(params.get("num_requests", 64))
+            block_size = int(params.get("block_size", 16))
+            max_seq_len = int(params.get("max_seq_len", 1024))
+            system_prompt_tokens = int(params.get("system_prompt_tokens", 256))
+            memory_cap_mb = int(params.get("memory_cap_mb", 1280))
+            res = run_paged_kv_benchmark(
+                num_requests=num_requests,
+                block_size=block_size,
+                max_seq_len=max_seq_len,
+                system_prompt_tokens=system_prompt_tokens,
+                memory_cap_mb=memory_cap_mb,
             )
+            res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
+            return 200, res
+
+        if method in ("GET", "POST") and path == "/api/correlator/run":
+            scenario_id = str(params.get("scenario_id") or "oom_allocator_trap").strip()
+            num_workers = int(params.get("num_workers", 64))
+            root_rank = int(params.get("root_rank", 19))
+            trials = int(params.get("trials", 48))
+            seed = int(params.get("seed", 42))
+
+            events, truth = build_worker_fault_stream(
+                scenario_id=scenario_id,
+                num_workers=num_workers,
+                root_rank=root_rank,
+                shuffle_seed=seed,
+            )
+            single = CrossNodeErrorCorrelator().correlate(events)
+            suite = run_correlator_benchmark(trials=trials, num_workers=num_workers, seed=seed)
             return 200, {
                 "request_id": request_id,
-                "profiler": prof,
+                "python_version": platform.python_version(),
+                "scenario": truth,
+                "single_stream_correlation": single,
+                "shuffled_suite_eval": suite,
+                "scenarios_available": list(DISTRIBUTED_FAULT_SCENARIOS.values()),
+                "handler_wall_ms": round((time.perf_counter() - t_req_start) * 1000.0, 3),
             }
 
-        if method == "POST" and path == "/api/copilot/ask":
-            question = str(body.get("question") or "").strip()
-            if not question:
-                return 400, {"error": "question is required"}
-            prof = compare_serving_configs(**ACTIVE_PROFILE_CFG)
-            out = ask_cluster_copilot(
-                question=question,
-                cluster_snapshot=CLUSTER.snapshot(),
-                profiler_result=prof,
-            )
-            out["request_id"] = request_id
-            return 200, out
+        if method in ("GET", "POST") and path == "/api/bedrock/compare":
+            prompt_text = str(params.get("prompt") or "").strip()
+            num_prompts = max(1, min(5, int(params.get("num_prompts", 1))))
+            max_tokens = max(32, min(250, int(params.get("max_tokens", 120))))
+            warmup = _to_bool(params.get("warmup"), default=True)
 
-        if method == "POST" and path == "/api/reset":
-            CLUSTER.reset()
-            ACTIVE_PROFILE_CFG.update(
-                {
-                    "tp_degree": 8,
-                    "precision": "FP8",
-                    "batch_size": 16,
-                    "nki_flash_fusion": True,
-                    "seq_len": 4096,
-                }
+            if prompt_text:
+                prompts = [prompt_text]
+            else:
+                prompts = DEFAULT_BENCHMARK_PROMPTS[:num_prompts]
+
+            region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
+            profiler = BedrockModelProfiler(
+                region_name=region,
+                converse_fn=_TEST_BEDROCK_CONVERSE_FN,
             )
-            return 200, {
-                "status": "reset_complete",
-                "cluster": CLUSTER.snapshot(),
-                "profiler": compare_serving_configs(**ACTIVE_PROFILE_CFG),
-            }
+            res = profiler.compare_nova_micro_vs_lite(
+                prompts=prompts,
+                max_tokens=max_tokens,
+                warmup=warmup,
+            )
+            res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
+            return 200, res
 
         return 404, {"error": f"Unknown API route: {method} {path}"}
     except KeyError as exc:
@@ -151,7 +245,7 @@ def route_api_request(
     except ValueError as exc:
         return 400, {"error": str(exc)}
     except Exception as exc:
-        return 500, {"error": str(exc)}
+        return 500, {"error": f"{type(exc).__name__}: {exc}"}
 
 
 def lambda_handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
@@ -160,7 +254,7 @@ def lambda_handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]
     method = ((req_ctx.get("http") or {}).get("method") or event.get("httpMethod") or "GET").upper()
     raw_path = event.get("rawPath") or event.get("path") or "/"
     query_params = {k: str(v) for k, v in (event.get("queryStringParameters") or {}).items() if v is not None}
-    req_id = getattr(context, "aws_request_id", "cloudfront-api")
+    req_id = getattr(context, "aws_request_id", "cloudfront-lambda")
 
     if method == "OPTIONS":
         return {"statusCode": 204, "headers": CORS_HEADERS, "body": ""}
@@ -246,10 +340,11 @@ class LocalNeuronPulseHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items() if v}
         length = int(self.headers.get("Content-Length") or "0")
         raw_body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
         body = json.loads(raw_body) if raw_body.strip() else {}
-        status, payload = route_api_request("POST", parsed.path, {}, body, request_id="local-dev")
+        status, payload = route_api_request("POST", parsed.path, query, body, request_id="local-dev")
         raw = json.dumps(payload, indent=2, default=str).encode("utf-8")
         self.send_response(status)
         for k, v in CORS_HEADERS.items():
@@ -262,7 +357,7 @@ class LocalNeuronPulseHandler(BaseHTTPRequestHandler):
 
 def run_local_server(port: int = 3096) -> None:
     srv = ThreadingHTTPServer(("127.0.0.1", port), LocalNeuronPulseHandler)
-    print(f"NeuronPulse UltraServer OS running at http://localhost:{port}", flush=True)
+    print(f"NeuronPulse ML Systems Lab running at http://localhost:{port}", flush=True)
     srv.serve_forever()
 
 

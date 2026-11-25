@@ -1,100 +1,193 @@
-"""Unit and API Integration Tests for NeuronPulse Trainium2 UltraServer OS."""
+"""Unit & Lambda API Integration Tests for NeuronPulse Real ML Systems Suite."""
 from __future__ import annotations
 
 import json
-import os
 import unittest
+from typing import Any, Dict
 
-from neuronpulse.correlator import CrossNodeErrorCorrelator, execute_automated_repair
-from neuronpulse.profiler import compare_serving_configs, simulate_neuron_serving
-from neuronpulse.server import lambda_handler, route_api_request
-from neuronpulse.topology import UltraServerCluster
+import neuronpulse.server as server_mod
+from neuronpulse.compiler_ir import run_compiler_pass_benchmark
+from neuronpulse.correlator import (
+    BedrockModelProfiler,
+    CrossNodeErrorCorrelator,
+    build_worker_fault_stream,
+    run_correlator_benchmark,
+)
+from neuronpulse.flash_attention import benchmark_attention_pair, run_attention_scaling_sweep
+from neuronpulse.paged_kv import run_paged_kv_benchmark
+from neuronpulse.server import lambda_handler
 
 
-class TestNeuronPulseSuite(unittest.TestCase):
+def _mock_bedrock_converse(**kwargs: Any) -> Dict[str, Any]:
+    model_id = kwargs.get("modelId", "")
+    is_micro = "nova-micro" in model_id
+    return {
+        "output": {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "text": (
+                            f"[{model_id}] Isolate root rank first and suppress downstream barrier timeouts."
+                        )
+                    }
+                ],
+            }
+        },
+        "usage": {
+            "inputTokens": 62,
+            "outputTokens": 28 if is_micro else 34,
+            "totalTokens": 90 if is_micro else 96,
+        },
+        "metrics": {
+            "latencyMs": 240 if is_micro else 390,
+        },
+    }
+
+
+class TestNeuronPulseRealMLSystems(unittest.TestCase):
     def setUp(self) -> None:
-        os.environ["NEURONPULSE_OFFLINE_LLM"] = "1"
-        route_api_request("POST", "/api/reset", {}, {})
+        server_mod._TEST_BEDROCK_CONVERSE_FN = _mock_bedrock_converse
 
-    def test_01_nominal_64_neuroncore_topology(self) -> None:
-        cluster = UltraServerCluster()
-        snap = cluster.snapshot()
-        self.assertEqual(snap["summary"]["total_neuron_cores"], 64)
-        self.assertEqual(snap["summary"]["healthy_cores"], 64)
-        self.assertEqual(len(snap["active_nodes"]), 4)
-        self.assertEqual(len(snap["efa_links"]), 4)
+    def tearDown(self) -> None:
+        server_mod._TEST_BEDROCK_CONVERSE_FN = None
 
-    def test_02_hbm_ecc_injection_and_100pct_root_isolation(self) -> None:
-        cluster = UltraServerCluster()
-        cluster.inject_fault("fault_hbm_ecc")
-        corr = CrossNodeErrorCorrelator().correlate(list(reversed(cluster.raw_events)))
-        self.assertEqual(corr["status"], "ROOT_CAUSE_ISOLATED")
-        self.assertEqual(corr["raw_alert_count"], 64)
-        self.assertEqual(corr["suppressed_symptom_count"], 63)
-        self.assertEqual(corr["root_cause"]["node_id"], "trn2-node-02")
-        self.assertEqual(corr["root_cause"]["core_id"], "nc-09")
-        self.assertEqual(corr["root_cause"]["global_rank"], 25)
-        self.assertTrue(corr["requires_node_replacement"])
+    def test_01_compiler_ir_dce_cse_fusion_equivalence_and_memory_savings(self) -> None:
+        for preset in ("transformer_mlp_block", "stacked_2layer_mlp", "wide_ffn_epilogue"):
+            res = run_compiler_pass_benchmark(preset=preset, batch_tokens=32, hidden_dim=32, repeats=1)
+            self.assertTrue(res["numerically_equivalent"])
+            self.assertLess(res["max_abs_diff"], 1e-9)
+            self.assertLess(res["optimized_op_nodes"], res["unoptimized_op_nodes"])
+            self.assertGreater(res["peak_memory_saved_pct"], 30.0)
+            self.assertIn("FusedMatMulBiasGelu", res["optimized_ir"])
+            self.assertNotIn("debug_probe_mm", res["optimized_ir"])
 
-    def test_03_efa_straggler_840ms_and_warm_spare_swap_74s(self) -> None:
-        cluster = UltraServerCluster()
-        snap = cluster.inject_fault("fault_efa_straggler")
-        self.assertEqual(snap["summary"]["collective_ring_p99_ms"], 840.0)
+    def test_02_tiled_flash_attention_exactness_and_quadratic_memory_reduction(self) -> None:
+        sweep = run_attention_scaling_sweep(seq_lengths=(128, 256, 512), head_dim=32, block_size=32, causal=False)
+        for row in sweep["sweep"]:
+            self.assertTrue(row["numerically_exact"])
+            self.assertLess(row["max_abs_diff"], 1e-9)
 
-        rep = execute_automated_repair(cluster)
-        self.assertEqual(rep["status"], "REPAIR_COMPLETED")
-        self.assertEqual(rep["repair"]["impaired_node"], "trn2-node-04")
-        self.assertEqual(rep["repair"]["replacement_node"], "trn2-spare-01")
-        self.assertEqual(rep["repair"]["automated_recovery_sec"], 74.0)
-        self.assertEqual(rep["repair"]["manual_reboot_baseline_sec"], 2520.0)
-        self.assertIn("trn2-spare-01", rep["snapshot"]["active_nodes"])
-        self.assertEqual(rep["snapshot"]["summary"]["healthy_cores"], 64)
+        n512 = sweep["n512_summary"]
+        self.assertGreater(n512["memory_reduction_pct"], 85.0)
+        self.assertGreater(sweep["scaling_proof"]["naive_memory_growth_x"], 10.0)
 
-    def test_04_kv_fragmentation_avoids_false_node_cordon(self) -> None:
-        cluster = UltraServerCluster()
-        cluster.inject_fault("fault_kv_frag")
-        rep = execute_automated_repair(cluster)
-        self.assertEqual(rep["repair"]["workflow_type"], "ONLINE_PAGED_KV_COMPACTION")
-        self.assertEqual(cluster.cordoned_nodes, [])
-        self.assertEqual(rep["snapshot"]["summary"]["healthy_cores"], 64)
+        # Also verify causal tiled attention skips upper-triangular tiles cleanly
+        causal_pair = benchmark_attention_pair(seq_len=256, head_dim=32, block_size=64, causal=True)
+        self.assertTrue(causal_pair["numerically_exact"])
+        self.assertLess(causal_pair["max_abs_diff"], 1e-9)
+        self.assertGreater(causal_pair["tiles_skipped_causal"], 0)
 
-    def test_05_nki_profiler_oom_and_fp8_speedup(self) -> None:
-        # BF16 at TP=2 on 70B exceeds 48 GB/core HBM3e
-        oom_cfg = simulate_neuron_serving(tp_degree=2, precision="BF16", batch_size=16, nki_flash_fusion=False)
-        self.assertFalse(oom_cfg["fits_in_hbm"])
-        self.assertEqual(oom_cfg["bottleneck"], "HBM_OOM_EXCEEDED")
+    def test_03_paged_kv_allocator_fragmentation_prefix_sharing_and_cow(self) -> None:
+        res = run_paged_kv_benchmark(
+            num_requests=64,
+            block_size=16,
+            max_seq_len=1024,
+            system_prompt_tokens=256,
+            memory_cap_mb=1280,
+        )
+        self.assertEqual(res["workload"]["num_requests"], 64)
+        self.assertEqual(res["workload"]["min_seq_len"], 48)
+        self.assertEqual(res["workload"]["max_seq_len"], 1024)
+        self.assertLess(
+            res["paged_cow_allocator"]["internal_fragmentation_pct"],
+            5.0,
+        )
+        self.assertGreater(
+            res["contiguous_baseline"]["internal_fragmentation_pct"],
+            35.0,
+        )
+        self.assertGreater(res["comparison"]["memory_reduction_pct"], 50.0)
+        self.assertGreater(res["paged_cow_allocator"]["cow_prefix_hit_rate_pct"], 30.0)
+        self.assertGreater(
+            res["comparison"]["paged_max_concurrent"],
+            res["comparison"]["contiguous_max_concurrent"] * 2,
+        )
+        self.assertTrue(res["cow_isolation_check"]["verified"])
+        self.assertEqual(res["cow_isolation_check"]["peer_corruptions"], 0)
 
-        # FP8 + TP=8 + NKI FlashAttention fits cleanly and beats BF16 unfused
-        cmp_out = compare_serving_configs(tp_degree=8, precision="FP8", batch_size=16, nki_flash_fusion=True)
-        self.assertTrue(cmp_out["selected"]["fits_in_hbm"])
-        self.assertGreater(cmp_out["vs_bf16_unfused_baseline"]["throughput_speedup_x"], 1.8)
-        self.assertGreater(cmp_out["vs_bf16_unfused_baseline"]["ttft_reduction_pct"], 40.0)
+    def test_04_distributed_fault_correlator_48_shuffled_streams(self) -> None:
+        events, truth = build_worker_fault_stream(
+            scenario_id="rpc_socket_reset",
+            num_workers=64,
+            root_rank=27,
+            shuffle_seed=99,
+        )
+        single = CrossNodeErrorCorrelator().correlate(events)
+        self.assertEqual(single["status"], "ROOT_CAUSE_ISOLATED")
+        self.assertEqual(single["root_cause"]["worker_id"], truth["expected_worker_id"])
+        self.assertEqual(single["suppressed_symptom_count"], 63)
+
+        bench = run_correlator_benchmark(trials=48, num_workers=64, seed=42)
+        self.assertEqual(bench["causal_correlator_accuracy_pct"], 100.0)
+        self.assertLess(bench["arrival_order_accuracy_pct"], 15.0)
+        self.assertEqual(bench["total_raw_worker_alarms"], 3072)
+
+    def test_05_bedrock_profiler_metrics_aggregation(self) -> None:
+        profiler = BedrockModelProfiler(region_name="us-west-2", converse_fn=_mock_bedrock_converse)
+        cmp_res = profiler.compare_nova_micro_vs_lite(prompts=["Diagnose ring barrier timeout."], warmup=False)
+        self.assertEqual(cmp_res["nova_micro"]["p50_bedrock_ms"], 240.0)
+        self.assertEqual(cmp_res["nova_lite"]["p50_bedrock_ms"], 390.0)
+        self.assertGreater(cmp_res["head_to_head"]["micro_cost_savings_vs_lite_pct"], 30.0)
 
     def test_06_lambda_api_routes_end_to_end(self) -> None:
         h = lambda_handler({"rawPath": "/api/health", "requestContext": {"http": {"method": "GET"}}})
         self.assertEqual(h["statusCode"], 200)
-        self.assertEqual(json.loads(h["body"])["total_neuron_cores"], 64)
+        h_body = json.loads(h["body"])
+        self.assertEqual(h_body["ec2_or_gpu_instances"], 0)
 
-        inj = lambda_handler(
+        comp = lambda_handler(
             {
-                "rawPath": "/api/faults/inject",
+                "rawPath": "/api/compiler/optimize",
                 "requestContext": {"http": {"method": "POST"}},
-                "body": json.dumps({"fault_id": "fault_hbm_ecc"}),
+                "body": json.dumps({"preset": "transformer_mlp_block", "batch_tokens": 32, "hidden_dim": 32}),
             }
         )
-        self.assertEqual(inj["statusCode"], 200)
-        inj_data = json.loads(inj["body"])
-        self.assertEqual(inj_data["correlation"]["root_cause"]["node_id"], "trn2-node-02")
+        self.assertEqual(comp["statusCode"], 200)
+        self.assertTrue(json.loads(comp["body"])["numerically_equivalent"])
 
-        ask = lambda_handler(
+        attn = lambda_handler(
             {
-                "rawPath": "/api/copilot/ask",
+                "rawPath": "/api/attention/run",
                 "requestContext": {"http": {"method": "POST"}},
-                "body": json.dumps({"question": "Diagnose active ECC trap and give neuron-ls commands"}),
+                "body": json.dumps({"seq_len": 128, "head_dim": 32, "block_size": 32}),
             }
         )
-        self.assertEqual(ask["statusCode"], 200)
-        self.assertIn("trn2-node-02", json.loads(ask["body"])["answer"])
+        self.assertEqual(attn["statusCode"], 200)
+        self.assertTrue(json.loads(attn["body"])["numerically_exact"])
+
+        kv = lambda_handler(
+            {
+                "rawPath": "/api/kvcache/run",
+                "requestContext": {"http": {"method": "POST"}},
+                "body": json.dumps({"num_requests": 32, "block_size": 16}),
+            }
+        )
+        self.assertEqual(kv["statusCode"], 200)
+        self.assertTrue(json.loads(kv["body"])["cow_isolation_check"]["verified"])
+
+        corr = lambda_handler(
+            {
+                "rawPath": "/api/correlator/run",
+                "requestContext": {"http": {"method": "POST"}},
+                "body": json.dumps({"scenario_id": "oom_allocator_trap", "num_workers": 64}),
+            }
+        )
+        self.assertEqual(corr["statusCode"], 200)
+        self.assertEqual(
+            json.loads(corr["body"])["shuffled_suite_eval"]["causal_correlator_accuracy_pct"],
+            100.0,
+        )
+
+        br = lambda_handler(
+            {
+                "rawPath": "/api/bedrock/compare",
+                "requestContext": {"http": {"method": "POST"}},
+                "body": json.dumps({"prompt": "Why fuse MatMul+Bias+GELU?", "warmup": False}),
+            }
+        )
+        self.assertEqual(br["statusCode"], 200)
+        self.assertIn("nova_micro", json.loads(br["body"]))
 
 
 if __name__ == "__main__":

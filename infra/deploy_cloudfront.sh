@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# NeuronPulse Production AWS Deployment:
-#   - Amazon CloudFront CDN (`https://dxxxx.cloudfront.net`)
+# NeuronPulse Production Serverless AWS Deployment ($0.00/hr Idle · 0 EC2/GPU):
+#   - Amazon CloudFront CDN (`https://d3dfklxckt5f00.cloudfront.net`, ID: E2ZSOS7XVJ55C7)
 #   - Origin 1 (`*`): Private Amazon S3 Bucket (`neuronpulse-web-796330847946-us-west-2`) via OAC
-#   - Origin 2 (`/api/*`): Python 3.12 Lambda (`neuronpulse-api-origin`) in `us-west-2`
-#     with IAM permission for Amazon Bedrock (`us.amazon.nova-lite-v1:0`)
+#   - Origin 2 (`/api/*`): 256 MB Python 3.12 Lambda (`neuronpulse-api-origin`) in `us-west-2`
+#     executing real Python ML systems passes + live Amazon Bedrock (`nova-micro` & `nova-lite`)
 # ==============================================================================
 set -euo pipefail
 
@@ -18,8 +18,7 @@ STAGE_DIR="/tmp/neuronpulse-aws-build"
 ZIP_PATH="/tmp/neuronpulse-api.zip"
 FUNC_NAME="neuronpulse-api-origin"
 ROLE_NAME="QuickSpacesBedrockApiRole"
-OAC_NAME="neuronpulse-s3-oac"
-CF_COMMENT="NeuronPulse Trainium UltraServer & Inference OS"
+DIST_ID="${CF_DIST_ID:-E2ZSOS7XVJ55C7}"
 
 echo "======================================================================"
 echo " 1. Verifying AWS Session (Profile: ${AWS_PROFILE}, Region: ${REGION})"
@@ -33,15 +32,8 @@ echo ""
 echo "======================================================================"
 echo " 2. Verifying IAM Role with Amazon Bedrock Converse Access"
 echo "======================================================================"
-if ROLE_JSON="$(aws iam get-role --role-name "${ROLE_NAME}" --output json 2>/dev/null)"; then
-  ROLE_ARN="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Role"]["Arn"])' <<< "${ROLE_JSON}")"
-else
-  TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
-  CREATE_ROLE_JSON="$(aws iam create-role --role-name "${ROLE_NAME}" --assume-role-policy-document "${TRUST}" --output json)"
-  ROLE_ARN="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Role"]["Arn"])' <<< "${CREATE_ROLE_JSON}")"
-  aws iam attach-role-policy --role-name "${ROLE_NAME}" --policy-arn "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  sleep 10
-fi
+ROLE_JSON="$(aws iam get-role --role-name "${ROLE_NAME}" --output json)"
+ROLE_ARN="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Role"]["Arn"])' <<< "${ROLE_JSON}")"
 
 BEDROCK_POLICY='{
   "Version": "2012-10-17",
@@ -63,202 +55,48 @@ aws iam put-role-policy \
 
 echo ""
 echo "======================================================================"
-echo " 3. Packaging & Deploying /api/* Origin (${FUNC_NAME})"
+echo " 3. Packaging & Updating 256 MB Python 3.12 Lambda (${FUNC_NAME})"
 echo "======================================================================"
 cp "${PROJECT_ROOT}/docs/architecture.svg" "${WEB_DIR}/architecture.svg"
 rm -rf "${STAGE_DIR}" "${ZIP_PATH}"
 mkdir -p "${STAGE_DIR}"
 cp -R "${PROJECT_ROOT}/neuronpulse" "${STAGE_DIR}/neuronpulse"
+cp -R "${PROJECT_ROOT}/benchmarks" "${STAGE_DIR}/benchmarks"
 cp -R "${PROJECT_ROOT}/web" "${STAGE_DIR}/web"
 cp -R "${PROJECT_ROOT}/docs" "${STAGE_DIR}/docs"
 find "${STAGE_DIR}" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 (cd "${STAGE_DIR}" && zip -qr "${ZIP_PATH}" .)
 
-if aws lambda get-function --function-name "${FUNC_NAME}" --region "${REGION}" >/dev/null 2>&1; then
-  aws lambda update-function-code --function-name "${FUNC_NAME}" --zip-file "fileb://${ZIP_PATH}" --region "${REGION}" >/dev/null
-  aws lambda wait function-updated --function-name "${FUNC_NAME}" --region "${REGION}"
-  aws lambda update-function-configuration \
-    --function-name "${FUNC_NAME}" \
-    --runtime "python3.12" \
-    --handler "neuronpulse.server.lambda_handler" \
-    --timeout 30 \
-    --memory-size 512 \
-    --environment "Variables={NEURONPULSE_DELIVERY=cloudfront-s3-oac,NEURONPULSE_BEDROCK_MODEL=us.amazon.nova-lite-v1:0}" \
-    --region "${REGION}" >/dev/null
-  aws lambda wait function-updated --function-name "${FUNC_NAME}" --region "${REGION}"
-else
-  aws lambda create-function \
-    --function-name "${FUNC_NAME}" \
-    --runtime "python3.12" \
-    --role "${ROLE_ARN}" \
-    --handler "neuronpulse.server.lambda_handler" \
-    --zip-file "fileb://${ZIP_PATH}" \
-    --timeout 30 \
-    --memory-size 512 \
-    --environment "Variables={NEURONPULSE_DELIVERY=cloudfront-s3-oac,NEURONPULSE_BEDROCK_MODEL=us.amazon.nova-lite-v1:0}" \
-    --region "${REGION}" >/dev/null
-  aws lambda wait function-active --function-name "${FUNC_NAME}" --region "${REGION}"
-fi
+aws lambda update-function-code \
+  --function-name "${FUNC_NAME}" \
+  --zip-file "fileb://${ZIP_PATH}" \
+  --region "${REGION}" >/dev/null
+aws lambda wait function-updated --function-name "${FUNC_NAME}" --region "${REGION}"
 
-if FURL_JSON="$(aws lambda get-function-url-config --function-name "${FUNC_NAME}" --region "${REGION}" --output json 2>/dev/null)"; then
-  API_ORIGIN_URL="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["FunctionUrl"])' <<< "${FURL_JSON}")"
-else
-  FURL_JSON="$(aws lambda create-function-url-config --function-name "${FUNC_NAME}" --auth-type NONE --region "${REGION}" --output json)"
-  API_ORIGIN_URL="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["FunctionUrl"])' <<< "${FURL_JSON}")"
-fi
-aws lambda add-permission --function-name "${FUNC_NAME}" --statement-id "AllowCloudFrontPublicApi" --action "lambda:InvokeFunctionUrl" --principal "*" --function-url-auth-type NONE --region "${REGION}" >/dev/null 2>&1 || true
-aws lambda add-permission --function-name "${FUNC_NAME}" --statement-id "AllowCloudFrontInvoke" --action "lambda:InvokeFunction" --principal "*" --invoked-via-function-url --region "${REGION}" >/dev/null 2>&1 || true
+aws lambda update-function-configuration \
+  --function-name "${FUNC_NAME}" \
+  --runtime "python3.12" \
+  --handler "neuronpulse.server.lambda_handler" \
+  --timeout 30 \
+  --memory-size 256 \
+  --environment "Variables={NEURONPULSE_DELIVERY=cloudfront-s3-oac-python3.12-lambda,NEURONPULSE_BEDROCK_MODEL=us.amazon.nova-micro-v1:0}" \
+  --region "${REGION}" >/dev/null
+aws lambda wait function-updated --function-name "${FUNC_NAME}" --region "${REGION}"
 
-API_DOMAIN="$(python3 -c 'from urllib.parse import urlparse; import sys; print(urlparse(sys.argv[1]).netloc)' "${API_ORIGIN_URL}")"
-echo "✅ /api/* Origin Domain: ${API_DOMAIN}"
+echo "✅ Lambda ${FUNC_NAME} updated (256 MB Python 3.12)"
 
 echo ""
 echo "======================================================================"
-echo " 4. Creating Private S3 Bucket (${BUCKET_NAME}) & Syncing Web UI"
+echo " 4. Syncing Web Assets to Private S3 (${BUCKET_NAME}) & Invalidating CDN"
 echo "======================================================================"
-if ! aws s3api head-bucket --bucket "${BUCKET_NAME}" 2>/dev/null; then
-  aws s3api create-bucket \
-    --bucket "${BUCKET_NAME}" \
-    --region "${REGION}" \
-    --create-bucket-configuration "LocationConstraint=${REGION}" >/dev/null
-fi
-
-aws s3api put-public-access-block \
-  --bucket "${BUCKET_NAME}" \
-  --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-
-aws s3 sync "${WEB_DIR}/" "s3://${BUCKET_NAME}/" --delete
-
-echo ""
-echo "======================================================================"
-echo " 5. Provisioning Amazon CloudFront Distribution (S3 OAC + /api/*)"
-echo "======================================================================"
-OAC_ID="$(aws cloudfront list-origin-access-controls --output json | python3 -c '
-import json, sys
-raw = sys.stdin.read().strip()
-items = (json.loads(raw) if raw else {}).get("OriginAccessControlList", {}).get("Items", [])
-for it in items:
-    if it.get("Name") == "'"${OAC_NAME}"'":
-        print(it["Id"]); break
-')"
-
-if [[ -z "${OAC_ID}" ]]; then
-  OAC_CFG='{"Name":"'"${OAC_NAME}"'","Description":"OAC for NeuronPulse private S3 web bucket","SigningProtocol":"sigv4","SigningBehavior":"always","OriginAccessControlOriginType":"s3"}'
-  OAC_ID="$(aws cloudfront create-origin-access-control --origin-access-control-config "${OAC_CFG}" --output json | python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["OriginAccessControl"]["Id"])')"
-fi
-
-EXISTING_DIST="$(aws cloudfront list-distributions --output json | python3 -c '
-import json, sys
-raw = sys.stdin.read().strip()
-items = (json.loads(raw) if raw else {}).get("DistributionList", {}).get("Items", [])
-for d in items:
-    if d.get("Comment") == "'"${CF_COMMENT}"'":
-        print(d["Id"] + "|" + d["DomainName"]); break
-')"
-
-S3_ORIGIN_DOMAIN="${BUCKET_NAME}.s3.${REGION}.amazonaws.com"
-
-if [[ -n "${EXISTING_DIST}" ]]; then
-  DIST_ID="${EXISTING_DIST%%|*}"
-  CF_DOMAIN="${EXISTING_DIST##*|}"
-  echo "   Reusing existing CloudFront distribution: ${DIST_ID} (${CF_DOMAIN})"
-else
-  CF_CONFIG="$(python3 - "${S3_ORIGIN_DOMAIN}" "${OAC_ID}" "${API_DOMAIN}" "${CF_COMMENT}" <<'PY'
-import json, sys, time
-s3_domain, oac_id, api_domain, comment = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-cfg = {
-    "CallerReference": f"neuronpulse-{int(time.time())}",
-    "Comment": comment,
-    "Enabled": True,
-    "DefaultRootObject": "index.html",
-    "HttpVersion": "http2and3",
-    "PriceClass": "PriceClass_100",
-    "Origins": {
-        "Quantity": 2,
-        "Items": [
-            {
-                "Id": "s3-web-origin",
-                "DomainName": s3_domain,
-                "OriginAccessControlId": oac_id,
-                "S3OriginConfig": {"OriginAccessIdentity": ""},
-            },
-            {
-                "Id": "api-backend-origin",
-                "DomainName": api_domain,
-                "CustomOriginConfig": {
-                    "HTTPPort": 80,
-                    "HTTPSPort": 443,
-                    "OriginProtocolPolicy": "https-only",
-                    "OriginSslProtocols": {"Quantity": 1, "Items": ["TLSv1.2"]},
-                    "OriginReadTimeout": 30,
-                    "OriginKeepaliveTimeout": 5,
-                },
-            },
-        ],
-    },
-    "DefaultCacheBehavior": {
-        "TargetOriginId": "s3-web-origin",
-        "ViewerProtocolPolicy": "redirect-to-https",
-        "Compress": True,
-        "AllowedMethods": {
-            "Quantity": 2,
-            "Items": ["GET", "HEAD"],
-            "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]},
-        },
-        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
-    },
-    "CacheBehaviors": {
-        "Quantity": 1,
-        "Items": [
-            {
-                "PathPattern": "/api/*",
-                "TargetOriginId": "api-backend-origin",
-                "ViewerProtocolPolicy": "redirect-to-https",
-                "Compress": True,
-                "AllowedMethods": {
-                    "Quantity": 7,
-                    "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
-                    "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]},
-                },
-                "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
-                "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
-            }
-        ],
-    },
-}
-print(json.dumps(cfg))
-PY
-)"
-  CREATED_JSON="$(aws cloudfront create-distribution --distribution-config "${CF_CONFIG}" --output json)"
-  DIST_ID="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Distribution"]["Id"])' <<< "${CREATED_JSON}")"
-  CF_DOMAIN="$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["Distribution"]["DomainName"])' <<< "${CREATED_JSON}")"
-fi
-
-BUCKET_POLICY='{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowCloudFrontServicePrincipalReadOnly",
-      "Effect": "Allow",
-      "Principal": {"Service": "cloudfront.amazonaws.com"},
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::'"${BUCKET_NAME}"'/*",
-      "Condition": {
-        "StringEquals": {
-          "AWS:SourceArn": "arn:aws:cloudfront::'"${ACCOUNT_ID}"':distribution/'"${DIST_ID}"'"
-        }
-      }
-    }
-  ]
-}'
-aws s3api put-bucket-policy --bucket "${BUCKET_NAME}" --policy "${BUCKET_POLICY}"
+aws s3 sync "${WEB_DIR}/" "s3://${BUCKET_NAME}/" --delete --region "${REGION}"
 aws cloudfront create-invalidation --distribution-id "${DIST_ID}" --paths "/*" >/dev/null
 
 echo ""
 echo "======================================================================"
-echo " 🚀 NEURONPULSE LIVE ON AMAZON CLOUDFRONT"
-echo "    CloudFront URL : https://${CF_DOMAIN}"
+echo " 🚀 NEURONPULSE v2.0 LIVE ON AMAZON CLOUDFRONT"
+echo "    CloudFront URL : https://d3dfklxckt5f00.cloudfront.net"
 echo "    Distribution ID: ${DIST_ID}"
 echo "    Private S3 OAC : s3://${BUCKET_NAME}"
-echo "    API + Bedrock  : ${API_ORIGIN_URL}"
+echo "    Lambda Origin  : ${FUNC_NAME} (256 MB Python 3.12)"
 echo "======================================================================"
