@@ -3,380 +3,200 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="NeuronPulse: 64-NeuronCore AWS Trainium2 UltraServer observability, cross-node causal error correlation, 74s warm spare swap, and NKI kernel roofline profiling.">
-  <meta name="theme-color" content="#f2f5fa">
-  <title>NeuronPulse: Trainium2 UltraServer &amp; NKI Inference OS | Ritwika Kancharla</title>
-  <script>
-    (function () {
-      var dark = location.hash.indexOf("theme=dark") !== -1 || (location.hash.indexOf("theme=light") === -1 && matchMedia("(prefers-color-scheme: dark)").matches);
-      document.documentElement.dataset.theme = dark ? "dark" : "light";
-    })();
-  </script>
+  <title>NEURONPULSE // TRN2-ULTRASERVER-04</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body id="top">
-<header class="site"><div class="bar">
-  <a class="brand" href="https://ritwikareddykancharla.github.io"><span class="mark">RK</span><span class="name">Ritwika Kancharla</span></a>
-  <nav aria-label="Site">
-    <a href="#live-system" class="on">Live system</a>
-    <a href="#problem">Problem</a>
-    <a href="#architecture">Architecture</a>
-    <a href="#results">Results</a>
-    <a href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os">GitHub</a>
-  </nav>
-  <button class="theme" type="button" aria-label="Switch between light and dark theme">
-    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
-    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
-  </button>
-  <a class="btn contact" href="https://ritwikareddykancharla.github.io/#projects">All projects</a>
-</div></header>
-
-<main><article class="demo" style="--accent:#12737a"><div class="wrap">
-  <a class="crumb" href="https://ritwikareddykancharla.github.io/#projects">&larr; All projects</a>
-  <header>
-    <p class="eyebrow">NeuronPulse &middot; AWS Trainium2 UltraServer &amp; Neuron SDK OS</p>
-    <h1 class="post-title">64-NeuronCore Fault Correlation, 74-Second Spare Swap, and NKI Roofline Profiling</h1>
-    <p class="meta">
-      <span>Ritwika Kancharla</span>
-      <span>Live on AWS CloudFront + Private S3 (OAC) + Bedrock Nova</span>
-      <span><a href="/api/health">/api/health</a></span>
-      <span><a href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os">Source (GitHub)</a></span>
-    </p>
-    <div class="stats">
-      <div><b>100.0%</b><span>Root-rank fault isolation across 48 shuffled 64-core cascades (64:1 alert compression)</span></div>
-      <div><b>74.0 sec</b><span>Automated cordon + S3 Express checkpoint + warm spare swap vs. 42 min manual reboot (34.1&times;)</span></div>
-      <div><b>2.35&times; tok/s</b><span>Llama-3.1-70B UltraServer throughput with FP8 + NKI FlashAttention-2 fusion</span></div>
-      <div><b>&minus;49.0% TTFT</b><span>Prefill latency reduction at TP=8 with 48 GB/core HBM3e capacity guard</span></div>
-    </div>
-  </header>
-
-  <div class="post-grid">
-    <aside class="side" aria-label="Contents">
-      <p class="side-k"><span>Contents</span><span class="side-pct" id="side-pct">0%</span></p>
-      <div class="side-bar"><i id="side-bar-fill"></i></div>
-      <ol class="side-list">
-        <li><a href="#live-system" class="on"><span class="sn">01</span><span>Live interactive system</span></a></li>
-        <li><a href="#problem"><span class="sn">02</span><span>Problem &amp; AWS alignment</span></a></li>
-        <li><a href="#architecture"><span class="sn">03</span><span>System architecture</span></a></li>
-        <li><a href="#results"><span class="sn">04</span><span>Measured benchmarks</span></a></li>
-      </ol>
-      <a class="side-top" href="#top">Back to top</a>
-    </aside>
-
-    <div class="post-body">
-      <div class="tldr">
-        <p class="tk">Abstract</p>
-        <p>When one NeuronCore inside a 64-rank Trainium2 UltraServer trips an uncorrectable HBM3e Double-Bit ECC trap or an EFAv3 SRD optical link degrades, the remaining 63 healthy ranks time out inside <code>nccomAllReduce</code> within two seconds. Naive cluster monitors page on-call with 64 simultaneous errors or cordon a healthy victim node. <strong>NeuronPulse</strong> orders hardware monotonic timestamps and subsystem causal precedence to isolate the exact root core in <code>0.8 s</code>, executes automated cordon + S3 Express checkpoint flush + warm spare promotion (<code>trn2-spare-01</code>) in <code>74 s</code>, and pairs cluster telemetry with an interactive <code>Llama-3.1-70B</code> Neuron Kernel Interface (<code>NKI</code>) roofline profiler and live <strong>Amazon Bedrock (<code>us.amazon.nova-lite-v1:0</code>)</strong> compiler copilot.</p>
-      </div>
-
-      <h2 id="live-system"><span class="num">01</span>Live interactive system</h2>
-
-      <figure class="fig wide">
-        <div class="plate">
-          <!-- Cluster Status Header inside Blueprint Plate -->
-          <div class="os-topbar">
-            <div class="os-status-group">
-              <span class="st-tag ok" id="cluster-status-pill">64/64 NEURONCORES HEALTHY</span>
-              <span style="font:400 11.5px var(--mono);color:var(--soft);">Cluster: <code>ultraserver-trn2-sea-07</code> (us-west-2b &middot; 3.2 Tbps EFAv3 SRD Ring)</span>
-            </div>
-            <button type="button" class="btn" id="reset-cluster-btn">&#8635; Reset 64-Core Cluster</button>
-          </div>
-
-          <!-- Live 5-Metric Strip -->
-          <div class="os-kpis">
-            <div class="os-kpi">
-              <small>Healthy Cores</small>
-              <strong id="kpi-cores">64 / 64</strong>
-              <span id="kpi-nodes-sub">4x trn2.48xlarge Active</span>
-            </div>
-            <div class="os-kpi">
-              <small>Avg HBM3e BW</small>
-              <strong id="kpi-hbm-bw">2,889 GB/s</strong>
-              <span>Per Logical NeuronCore-v3</span>
-            </div>
-            <div class="os-kpi">
-              <small>EFA All-Reduce p99</small>
-              <strong id="kpi-ring-p99">4.3 ms</strong>
-              <span>4x 800G SRD Collective</span>
-            </div>
-            <div class="os-kpi">
-              <small>TensorEngine MFU</small>
-              <strong id="kpi-flops">91.4%</strong>
-              <span id="kpi-temp-sub">Peak Die: 60.5&deg;C</span>
-            </div>
-            <div class="os-kpi">
-              <small>Warm Spare Pool</small>
-              <strong id="kpi-spare">trn2-spare-01</strong>
-              <span id="kpi-spare-sub">STANDBY_READY (74s SLA)</span>
-            </div>
-          </div>
-
-          <!-- What To Try (1-Click Guided Workflows) -->
-          <div class="guided-now">
-            <div class="guided-head">
-              <p class="guided-k">What To Try &mdash; 1-Click Guided Workflows</p>
-              <span class="guided-sub">Click any workflow below to inject real hardware/network/allocator faults or profile NKI kernels live:</span>
-            </div>
-            <div class="guided-btns">
-              <button type="button" class="wf-tile danger" id="wf-ecc-btn">
-                <b>1. HBM3e Double-Bit ECC</b>
-                <span>Trip 0x4E02 on trn2-node-02:nc-09 &amp; isolate vs. 63 ring timeouts</span>
-              </button>
-              <button type="button" class="wf-tile ok" id="wf-repair-btn">
-                <b>2. Auto-Cordon &amp; Spare Swap</b>
-                <span>Flush S3 Express ckpt &amp; promote trn2-spare-01 in 74s vs. 42m</span>
-              </button>
-              <button type="button" class="wf-tile signal" id="wf-efa-btn">
-                <b>3. EFA Straggler (840ms p99)</b>
-                <span>Inject -14.8 dBm optical Rx drop on trn2-node-04:efa-2</span>
-              </button>
-              <button type="button" class="wf-tile signal" id="wf-kv-btn">
-                <b>4. KV-Cache Slab Stall</b>
-                <span>Trigger 44.6% HBM fragmentation &amp; run 4.4s online compaction</span>
-              </button>
-              <button type="button" class="wf-tile teal" id="wf-nki-btn">
-                <b>5. NKI FlashAttention + FP8</b>
-                <span>Profile Llama-3.1-70B roofline &amp; query live Bedrock Nova</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- View Switcher -->
-          <div class="mode-tabs">
-            <button type="button" class="mode-tab active" id="tab-topology">A. 64-NeuronCore Topology &amp; Error Correlator</button>
-            <button type="button" class="mode-tab" id="tab-profiler">B. LLM Serving &amp; Neuron Kernel (NKI) Profiler</button>
-          </div>
-
-          <!-- Workspace Split: Left = Topology OR Profiler, Right = Live Bedrock Nova Copilot -->
-          <div class="os-workspace">
-            <div>
-              <!-- PANEL A: 64-NeuronCore Matrix -->
-              <div id="panel-topology">
-                <div id="correlator-banner" class="corr-box ok"></div>
-                <div id="repair-timeline-box" class="repair-strip hidden"></div>
-
-                <div class="matrix-legend">
-                  <span><i class="lg-ok"></i>Healthy</span>
-                  <span><i class="lg-spare"></i>Promoted Spare (trn2-spare-01)</span>
-                  <span><i class="lg-root"></i>Root Hardware/EFA Fault</span>
-                  <span><i class="lg-stall"></i>Downstream Ring Timeout (63x)</span>
-                  <span><i class="lg-kv"></i>KV Slab Fragmentation</span>
-                </div>
-
-                <div id="nodes-grid" class="nodes-2x2"></div>
-                <div id="core-inspector" class="inspector-bar"></div>
-                <div id="efa-ring-list" class="efa-strip"></div>
-              </div>
-
-              <!-- PANEL B: LLM Serving & NKI Kernel Profiler -->
-              <div id="panel-profiler" class="hidden">
-                <div class="prof-ctrl-grid">
-                  <div>
-                    <label class="ctrl-lbl">Tensor Parallelism (TP Degree)</label>
-                    <div class="seg-row" id="tp-seg">
-                      <button type="button" class="seg-b" data-tp="2">TP=2</button>
-                      <button type="button" class="seg-b" data-tp="4">TP=4</button>
-                      <button type="button" class="seg-b active" data-tp="8">TP=8</button>
-                      <button type="button" class="seg-b" data-tp="16">TP=16</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label class="ctrl-lbl">Weight &amp; KV Quantization</label>
-                    <div class="seg-row" id="prec-seg">
-                      <button type="button" class="seg-b" data-prec="BF16">BF16</button>
-                      <button type="button" class="seg-b active" data-prec="FP8">FP8 (E4M3)</button>
-                      <button type="button" class="seg-b" data-prec="W4A16">W4A16</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label class="ctrl-lbl">Continuous Batch Size: <strong id="batch-val-label">16</strong></label>
-                    <input type="range" id="batch-slider" min="1" max="64" step="1" value="16" class="prof-range">
-                  </div>
-                  <div>
-                    <label class="ctrl-lbl">NKI FlashAttention-2 + Fused MLP</label>
-                    <button type="button" class="btn accent" id="nki-toggle-btn" style="width:100%;">NKI Kernel Fusion: ENABLED</button>
-                  </div>
-                </div>
-
-                <div id="profiler-kpis" class="os-kpis" style="grid-template-columns:repeat(4,minmax(0,1fr));"></div>
-
-                <div class="prof-bars-2col">
-                  <div class="pbar-box">
-                    <p class="pbar-h">Prefill TTFT (ms) <span>lower is faster</span></p>
-                    <div id="ttft-bars"></div>
-                  </div>
-                  <div class="pbar-box">
-                    <p class="pbar-h">64-Core Throughput (tok/s) <span>higher is better</span></p>
-                    <div id="tput-bars"></div>
-                  </div>
-                </div>
-
-                <div id="profiler-footer-card" class="corr-box"></div>
-              </div>
-            </div>
-
-            <!-- RIGHT PANEL: Live Amazon Bedrock Nova Cluster & Compiler Copilot -->
-            <aside class="copilot-panel">
-              <div class="cop-head">
-                <div>
-                  <div class="corr-k">Live Amazon Bedrock Copilot</div>
-                  <strong style="font:800 1.08rem var(--display);">Cluster &amp; Compiler Runbook AI</strong>
-                </div>
-                <span class="st-tag">us.amazon.nova-lite-v1:0</span>
-              </div>
-
-              <div class="cop-prompts">
-                <button type="button" class="cop-chip" data-q="Diagnose the current UltraServer state, isolate any root-cause rank vs ring timeouts, and provide exact neuron-ls and repair CLI commands.">
-                  &rarr; Diagnose active cluster state &amp; output neuron-ls runbook
-                </button>
-                <button type="button" class="cop-chip" data-q="Give me exact NEURON_CC_FLAGS and NKI kernel tuning recommendations for the active Llama-3.1-70B serving configuration.">
-                  &rarr; Generate NEURON_CC_FLAGS for active NKI profile
-                </button>
-                <button type="button" class="cop-chip" data-q="How does NeuronPulse distinguish 1 HBM3e Double-Bit ECC trap from 63 downstream nccomAllReduce timeouts?">
-                  &rarr; Explain 64-rank causal correlation vs. ring stalls
-                </button>
-              </div>
-
-              <form id="copilot-form">
-                <textarea id="copilot-input" class="cop-textarea" rows="3" placeholder="Ask about HBM3e ECC traps, EFA SRD retransmits, warm spare swap, or NKI FlashAttention flags..."></textarea>
-                <button type="submit" class="btn primary" id="copilot-submit-btn" style="width:100%;">Ask Amazon Bedrock Nova &rarr;</button>
-              </form>
-
-              <div id="copilot-output" class="cop-out">
-                Click any prompt above or inject a fault in the 1-Click Guided Workflows bar to synthesize a live runbook from <code>us.amazon.nova-lite-v1:0</code> grounded in real-time cluster telemetry.
-              </div>
-            </aside>
-          </div>
+<body>
+  <div class="app" id="app-root">
+    <!-- Hardware Top Bar -->
+    <header class="bar">
+      <div class="brand">
+        <svg class="wafer-icon" viewBox="0 0 44 44" aria-hidden="true">
+          <circle cx="22" cy="22" r="20" fill="#091320" stroke="#00e5ff" stroke-width="1.6"/>
+          <rect x="11" y="11" width="9" height="9" fill="#10f59c" opacity="0.85"/>
+          <rect x="24" y="11" width="9" height="9" fill="#00e5ff" opacity="0.85"/>
+          <rect x="11" y="24" width="9" height="9" fill="#00e5ff" opacity="0.85"/>
+          <rect x="24" y="24" width="9" height="9" fill="#10f59c" opacity="0.85"/>
+          <path d="M22 2v6M22 36v6M2 22h6M36 22h6" stroke="#00e5ff" stroke-width="1.4"/>
+        </svg>
+        <div>
+          <h1>NEURONPULSE <span>// TRN2-ULTRASERVER-04</span></h1>
+          <p>64-NeuronCore Silicon Telemetry &middot; Cross-Node Fault Correlator &middot; 74s Spare Swap &middot; NKI Roofline Scope</p>
         </div>
-        <figcaption><b>Figure 1.</b> Interactive 64-NeuronCore Trainium2 UltraServer topology, causal cross-node fault correlator, automated <code>trn2-spare-01</code> repair workflow, and <code>Llama-3.1-70B</code> NKI roofline profiler backed by AWS Lambda + Amazon Bedrock in <code>us-west-2</code>.</figcaption>
-      </figure>
-
-      <h2 id="problem"><span class="num">02</span>Problem &amp; AWS team alignment</h2>
-      <p>Synchronous collective rings amplify single-device failures into cluster-wide stalls. When rank 25 (<code>trn2-node-02:nc-09</code>) encounters an uncorrectable HBM3e Double-Bit ECC error or <code>trn2-node-04:efa-2</code> suffers optical attenuation, every healthy peer blocks inside <code>nccomAllReduce</code> and emits a timeout event. Central log collectors ingest those 64 events out of order; naive first-alarm automation risks cordoning a healthy node while leaving the impaired silicon in the ring.</p>
-      <p><strong>NeuronPulse</strong> was built around four AWS silicon and AI infrastructure problems: <strong>Neuron Developer Experiences</strong> (<code>neuron-ls</code> / <code>neuron-monitor</code> observability and cross-node causal correlation), <strong>EC2 Trainium UltraServers</strong> (automated cordon, S3 Express async checkpointing, and 74-second warm spare promotion), <strong>Annapurna Labs EFAv3 Networking</strong> (SRD RNR retransmit and collective tail-latency isolation), and <strong>SageMaker AI Inference</strong> (<code>TP=2..16</code>, <code>FP8</code>/<code>W4A16</code>, and NKI FlashAttention kernel roofline co-design).</p>
-
-      <div class="note">
-        <b>Hardware vs. Allocator Discrimination</b>
-        <p>Not every serving latency spike is bad silicon. Under jagged 32K prompt bursts, external HBM3e KV-cache fragmentation (<code>44.6%</code>) stalls continuous batching with zero ECC or EFA errors. NeuronPulse verifies zero hardware counters first and runs online PagedKV compaction in <code>4.4 s</code> instead of burning a warm spare node.</p>
       </div>
 
-      <h2 id="architecture"><span class="num">03</span>System architecture</h2>
-      <figure class="fig wide">
-        <div class="plate">
-          <svg class="loop" viewBox="0 0 1040 310" role="img" aria-label="NeuronPulse CloudFront, Private S3 OAC, Lambda API, Correlator, NKI Profiler, and Amazon Bedrock Architecture">
-            <g class="lp-h">
-              <rect x="20" y="92" width="175" height="126"/>
-              <text x="36" y="118" class="lp-n">01 &middot; Edge Delivery</text>
-              <text x="36" y="144" class="lp-t">CloudFront CDN</text>
-              <text x="36" y="168" class="lp-s">/* &rarr; Private S3 OAC</text>
-              <text x="36" y="188" class="lp-s">/api/* &rarr; Lambda 3.12</text>
-            </g>
-            <g class="lp-m">
-              <rect x="245" y="34" width="245" height="106"/>
-              <text x="261" y="58" class="lp-n">02 &middot; Causal Correlator</text>
-              <text x="261" y="83" class="lp-t">64-Rank Fault Isolation</text>
-              <text x="261" y="105" class="lp-s">HW Monotonic ns + Priority</text>
-              <text x="261" y="123" class="lp-s">64 Alarms &rarr; 1 Root Rank</text>
-            </g>
-            <g class="lp-m">
-              <rect x="245" y="168" width="245" height="108"/>
-              <text x="261" y="192" class="lp-n">03 &middot; NKI Roofline Engine</text>
-              <text x="261" y="217" class="lp-t">Serving &amp; Kernel Model</text>
-              <text x="261" y="239" class="lp-s">TP=2..16 &middot; BF16/FP8/W4A16</text>
-              <text x="261" y="257" class="lp-s">48 GB/core HBM3e Guard</text>
-            </g>
-            <g class="lp-x">
-              <rect x="545" y="34" width="235" height="106"/>
-              <text x="561" y="58" class="lp-n">04 &middot; UltraServer Repair</text>
-              <text x="561" y="83" class="lp-t">74s Spare Promotion</text>
-              <text x="561" y="105" class="lp-s">Cordon + S3 Express Ckpt</text>
-              <text x="561" y="123" class="lp-s">Swap trn2-spare-01 (34.1x)</text>
-            </g>
-            <g class="lp-h">
-              <rect x="545" y="168" width="235" height="108"/>
-              <text x="561" y="192" class="lp-n">05 &middot; Converse API</text>
-              <text x="561" y="217" class="lp-t">Amazon Bedrock Nova</text>
-              <text x="561" y="239" class="lp-s">us.amazon.nova-lite-v1:0</text>
-              <text x="561" y="257" class="lp-s">neuron-ls &amp; NEURON_CC_FLAGS</text>
-            </g>
-            <g class="lp-m">
-              <rect x="830" y="92" width="190" height="126"/>
-              <text x="846" y="118" class="lp-n">06 &middot; Cluster State</text>
-              <text x="846" y="144" class="lp-t">trn2 UltraServer</text>
-              <text x="846" y="168" class="lp-s">4 Nodes &times; 16 Cores</text>
-              <text x="846" y="188" class="lp-s">3.2 Tbps EFAv3 SRD</text>
-            </g>
-            <g stroke="var(--ink)" stroke-width="1.8" fill="none">
-              <path d="M195 135 L245 87"/>
-              <path d="M195 175 L245 222"/>
-              <path d="M490 87 L545 87"/>
-              <path d="M490 222 L545 222"/>
-              <path d="M780 87 L830 135"/>
-              <path d="M780 222 L830 175"/>
-            </g>
-          </svg>
+      <div class="bar-right">
+        <div class="pulse-badge" id="cluster-pulse"><i></i><span id="cluster-pulse-text">64/64 CORES NOMINAL</span></div>
+        <button type="button" class="btn" id="reset-btn">Reset Wafer</button>
+        <a class="btn" href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os" target="_blank" rel="noreferrer">GitHub &nearr;</a>
+      </div>
+    </header>
+
+    <!-- Tactile Sabotage & Automated Repair Control Deck -->
+    <section class="deck" aria-label="Sabotage and Automated Repair Controls">
+      <div class="sabotage-group">
+        <span class="deck-label">Sabotage switches:</span>
+        <button type="button" class="sw-btn" id="sw-ecc" data-fault="fault_hbm_ecc">
+          <span class="led"></span>HBM3e Double-Bit ECC (trn2-node-02:nc-09)
+        </button>
+        <button type="button" class="sw-btn" id="sw-efa" data-fault="fault_efa_straggler">
+          <span class="led"></span>EFA Ring Straggler (trn2-node-04:efa-2 &middot; 840ms)
+        </button>
+        <button type="button" class="sw-btn" id="sw-kv" data-fault="fault_kv_frag">
+          <span class="led"></span>KV-Cache Slab Fragmentation (44.6%)
+        </button>
+      </div>
+
+      <div class="sabotage-group">
+        <button type="button" class="btn repair" id="exec-repair-btn">
+          &#9889; Auto-Cordon &amp; Swap Warm Spare (74s vs 42m)
+        </button>
+      </div>
+    </section>
+
+    <!-- 5-Channel Oscilloscope Readouts -->
+    <dl class="readouts">
+      <div class="scope-stat">
+        <dt>Active NeuronCores</dt>
+        <dd id="kpi-cores">64 / 64</dd>
+        <small id="kpi-nodes-sub">4x trn2.48xlarge Dies</small>
+      </div>
+      <div class="scope-stat">
+        <dt>HBM3e Bandwidth</dt>
+        <dd id="kpi-bw">2,889 GB/s</dd>
+        <small>Sustained per Logical Core</small>
+      </div>
+      <div class="scope-stat">
+        <dt>EFAv3 All-Reduce p99</dt>
+        <dd id="kpi-p99">4.3 ms</dd>
+        <small>3.2 Tbps SRD Collective Ring</small>
+      </div>
+      <div class="scope-stat">
+        <dt>TensorEngine MFU</dt>
+        <dd id="kpi-mfu">91.4%</dd>
+        <small id="kpi-temp">Peak Die: 60.5&deg;C</small>
+      </div>
+      <div class="scope-stat">
+        <dt>Warm Spare Node</dt>
+        <dd id="kpi-spare">trn2-spare-01</dd>
+        <small id="kpi-spare-state">STANDBY_READY</small>
+      </div>
+    </dl>
+
+    <!-- Main Full-Viewport Split -->
+    <main class="cols">
+      <!-- LEFT / CENTER: 64-NeuronCore Silicon Wafer + Causal Correlator + EFA Ring -->
+      <section class="panel" aria-labelledby="wafer-heading">
+        <div class="panel-head">
+          <h2 id="wafer-heading">64-NeuronCore UltraServer Wafer &amp; Causal Correlator</h2>
+          <span class="dim mono" style="font-size:11px;">Click any core die to lock oscilloscope probe</span>
         </div>
-        <figcaption><b>Figure 2.</b> Single-origin CloudFront distribution routing static assets to a private S3 bucket via SigV4 Origin Access Control (OAC) and <code>/api/*</code> requests to a Python 3.12 Lambda handler invoking Amazon Bedrock Nova Lite.</figcaption>
-      </figure>
 
-      <h2 id="results"><span class="num">04</span>Measured benchmarks</h2>
-      <div class="tablewrap wide">
-        <table>
-          <thead>
-            <tr>
-              <th>Evaluation Dimension</th>
-              <th class="r">NeuronPulse</th>
-              <th class="r">Baseline</th>
-              <th>Gain / Verification</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="best">
-              <td>Root-Rank Fault Isolation (48 Shuffled Cascades)</td>
-              <td class="r">100.0%</td>
-              <td class="r">4.2%</td>
-              <td>+95.8 pts over first-log-arrival heuristic; 0 false healthy-node cordons</td>
-            </tr>
-            <tr>
-              <td>64-Rank Collective Timeout Noise Reduction</td>
-              <td class="r">64 : 1</td>
-              <td class="r">1 : 1</td>
-              <td>3,072 raw rank alarms collapsed into 48 single root-cause incidents</td>
-            </tr>
-            <tr class="best">
-              <td>Hardware Node Impairment Recovery (MTTR)</td>
-              <td class="r">74.0 s</td>
-              <td class="r">2,520.0 s</td>
-              <td>34.1&times; faster than 42-minute manual ticket + instance reboot</td>
-            </tr>
-            <tr>
-              <td>Online PagedKV Slab Defragmentation</td>
-              <td class="r">4.4 s</td>
-              <td class="r">900.0 s</td>
-              <td>Compacts 44.6% &rarr; 6.2% fragmentation in place without consuming warm spare</td>
-            </tr>
-            <tr class="best">
-              <td>Llama-3.1-70B Serving (FP8 + TP=8 + NKI Flash)</td>
-              <td class="r">2.35&times; tok/s</td>
-              <td class="r">1.00&times;</td>
-              <td>&minus;49.0% prefill TTFT vs. BF16 TP=8 unfused baseline</td>
-            </tr>
-          </tbody>
-        </table>
+        <div id="correlator-strip" class="correlator-strip"></div>
+        <div id="fsm-box" class="fsm-box hidden"></div>
+
+        <div class="wafer-legend">
+          <span><i style="background:#10f59c"></i>Nominal</span>
+          <span><i style="background:#00e5ff"></i>Promoted Spare (trn2-spare-01)</span>
+          <span><i style="background:#ff3d57"></i>Root Hardware/Link Fault (1x)</span>
+          <span><i style="background:#ff6d00"></i>Symptomatic Ring Stall (63x)</span>
+          <span><i style="background:#ffb700"></i>KV Allocator Pressure</span>
+        </div>
+
+        <div id="dies-grid" class="dies-grid"></div>
+        <div id="probe-drawer" class="probe-drawer"></div>
+        <div id="efa-grid" class="efa-grid"></div>
+      </section>
+
+      <!-- RIGHT STACK: NKI Roofline Oscilloscope + Live Bedrock Nova Terminal -->
+      <div class="stack">
+        <section class="panel" aria-labelledby="osc-heading">
+          <div class="panel-head">
+            <h2 id="osc-heading">NKI Kernel Roofline Oscilloscope // Llama-3.1-70B</h2>
+            <span class="dim mono" style="font-size:11px;" id="osc-speedup-tag">2.35&times; tok/s &middot; &minus;49% TTFT</span>
+          </div>
+
+          <div class="osc-controls">
+            <div class="ctrl-box">
+              <label>Tensor Parallelism (TP)</label>
+              <div class="seg" id="tp-seg">
+                <button type="button" data-tp="2">TP=2</button>
+                <button type="button" data-tp="4">TP=4</button>
+                <button type="button" data-tp="8" class="active">TP=8</button>
+                <button type="button" data-tp="16">TP=16</button>
+              </div>
+            </div>
+
+            <div class="ctrl-box">
+              <label>Precision</label>
+              <div class="seg" id="prec-seg">
+                <button type="button" data-prec="BF16">BF16</button>
+                <button type="button" data-prec="FP8" class="active">FP8</button>
+                <button type="button" data-prec="W4A16">W4A16</button>
+              </div>
+            </div>
+
+            <div class="ctrl-box">
+              <label>Continuous Batch Size: <strong id="batch-lbl" style="color:#00e5ff">16</strong></label>
+              <input type="range" id="batch-slider" class="osc-range" min="1" max="64" step="1" value="16">
+            </div>
+
+            <div class="ctrl-box">
+              <label>NKI FlashAttention-2 + Fused MLP</label>
+              <button type="button" class="btn cyan" id="nki-btn" style="width:100%;">NKI Fusion: ON</button>
+            </div>
+          </div>
+
+          <div id="osc-kpis" class="osc-kpis"></div>
+
+          <div class="osc-traces">
+            <div class="trace-col">
+              <h3>TTFT Latency (ms &middot; lower better)</h3>
+              <div id="ttft-bars"></div>
+            </div>
+            <div class="trace-col">
+              <h3>64-Core Throughput (tok/s)</h3>
+              <div id="tput-bars"></div>
+            </div>
+          </div>
+
+          <div id="cc-flags-box" class="term-cmd"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="nova-heading">
+          <div class="panel-head">
+            <h2 id="nova-heading">Bedrock Nova Silicon &amp; Compiler Terminal</h2>
+            <code style="color:#00e5ff;font-size:11px;">us.amazon.nova-lite-v1:0</code>
+          </div>
+
+          <div class="probe-chips">
+            <button type="button" class="pchip" data-q="Diagnose the current UltraServer state, isolate any root-cause rank vs ring timeouts, and output neuron-ls and repair CLI commands.">
+              &gt; diagnose_wafer --neuron-ls
+            </button>
+            <button type="button" class="pchip" data-q="Give me exact NEURON_CC_FLAGS and NKI kernel tuning recommendations for the active Llama-3.1-70B serving configuration.">
+              &gt; tune_nki_flags --llama70b
+            </button>
+            <button type="button" class="pchip" data-q="Explain how hardware monotonic timestamps separate 1 HBM3e Double-Bit ECC trap from 63 nccomAllReduce ring timeouts.">
+              &gt; explain_64rank_correlator
+            </button>
+          </div>
+
+          <form id="term-form" class="term-form">
+            <input type="text" id="term-input" class="term-input" placeholder="Query Bedrock Nova about ECC traps, EFA SRD retries, or NEURON_CC_FLAGS...">
+            <button type="submit" class="btn cyan" id="term-submit">Run &rarr;</button>
+          </form>
+
+          <div id="term-screen" class="term-screen">
+            <span class="dim">// Ready. Flip a Sabotage Switch in the top deck or click a probe command above to query live Amazon Bedrock Nova (<code>us.amazon.nova-lite-v1:0</code>).</span>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   </div>
-</div></article></main>
 
-<footer class="site-foot"><div class="wrap">
-  <span>Ritwika Kancharla &middot; NeuronPulse Trainium2 UltraServer OS</span>
-  <span><a href="https://ritwikareddykancharla.github.io">Portfolio</a> &nbsp;&middot;&nbsp; <a href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os">GitHub</a></span>
-</div></footer>
-
-<a class="totop" href="#top" aria-label="Back to top">&uarr;</a>
-<script src="/app.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
