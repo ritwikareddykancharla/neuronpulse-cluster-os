@@ -29,6 +29,7 @@ from .correlator import (
 )
 from .flash_attention import benchmark_attention_pair, run_attention_scaling_sweep
 from .paged_kv import run_paged_kv_benchmark
+from .quant_spec_transport import run_quant_spec_suite, run_transport_ring_mr_benchmark
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT_DIR / "web"
@@ -84,11 +85,20 @@ def route_api_request(
             return 200, {
                 "status": "ok",
                 "service": "neuronpulse",
+                "version": "2.1.0",
                 "architecture": "100%-serverless-s3-cloudfront-lambda-bedrock",
                 "ec2_or_gpu_instances": 0,
                 "idle_cost_usd": 0.0,
                 "delivery": os.environ.get("NEURONPULSE_DELIVERY", "cloudfront-s3-oac + python3.12-lambda"),
                 "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2")),
+                "modules": [
+                    "compiler_ir",
+                    "flash_attention",
+                    "paged_kv",
+                    "quant_spec_moe_aot",
+                    "transport_sq_cq_mr_cache",
+                    "correlator_bedrock",
+                ],
                 "bedrock_models": [
                     "us.amazon.nova-micro-v1:0",
                     "us.amazon.nova-lite-v1:0",
@@ -114,6 +124,8 @@ def route_api_request(
                 system_prompt_tokens=256,
                 memory_cap_mb=1280,
             )
+            live_quant_spec = run_quant_spec_suite()
+            live_transport = run_transport_ring_mr_benchmark(num_messages=2048, num_mr_lookups=512)
             live_corr = run_correlator_benchmark(trials=48, num_workers=64, seed=42)
             return 200, {
                 "request_id": request_id,
@@ -125,6 +137,8 @@ def route_api_request(
                     "compiler_ir": live_compiler,
                     "flash_attention": live_attn,
                     "paged_kv": live_kv,
+                    "quant_spec": live_quant_spec,
+                    "transport_ring": live_transport,
                     "correlator": live_corr,
                 },
             }
@@ -212,6 +226,46 @@ def route_api_request(
                 "scenarios_available": list(DISTRIBUTED_FAULT_SCENARIOS.values()),
                 "handler_wall_ms": round((time.perf_counter() - t_req_start) * 1000.0, 3),
             }
+
+        if method in ("GET", "POST") and path == "/api/quant-spec":
+            alpha = float(params.get("alpha", 0.5))
+            group_size = int(params.get("group_size", 32))
+            gamma = int(params.get("gamma", 4))
+            draft_alignment = float(params.get("draft_alignment", 0.80))
+            max_buckets = int(params.get("max_buckets", 5))
+            top_k = int(params.get("top_k", 2))
+            res = run_quant_spec_suite(
+                alpha=alpha,
+                group_size=group_size,
+                gamma=gamma,
+                draft_alignment=draft_alignment,
+                max_buckets=max_buckets,
+                top_k=top_k,
+            )
+            res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
+            return 200, res
+
+        if method in ("GET", "POST") and path == "/api/transport/ring":
+            ring_capacity = int(params.get("ring_capacity", 256))
+            num_messages = int(params.get("num_messages", 4096))
+            batch_size = int(params.get("batch_size", 32))
+            num_mr_regions = int(params.get("num_mr_regions", 128))
+            num_mr_lookups = int(params.get("num_mr_lookups", 1024))
+            tensor_bytes = int(params.get("tensor_bytes", 1048576))
+            res = run_transport_ring_mr_benchmark(
+                ring_capacity=ring_capacity,
+                num_messages=num_messages,
+                batch_size=batch_size,
+                num_mr_regions=num_mr_regions,
+                num_mr_lookups=num_mr_lookups,
+                tensor_bytes=tensor_bytes,
+            )
+            res["request_id"] = request_id
+            res["python_version"] = platform.python_version()
+            res["handler_wall_ms"] = round((time.perf_counter() - t_req_start) * 1000.0, 3)
+            return 200, res
 
         if method in ("GET", "POST") and path == "/api/bedrock/compare":
             prompt_text = str(params.get("prompt") or "").strip()

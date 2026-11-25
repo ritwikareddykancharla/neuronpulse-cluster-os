@@ -1,4 +1,4 @@
-"""Unit & Lambda API Integration Tests for NeuronPulse Real ML Systems Suite."""
+"""Unit & Lambda API Integration Tests for NeuronPulse v2 Real ML Systems Suite."""
 from __future__ import annotations
 
 import json
@@ -15,6 +15,15 @@ from neuronpulse.correlator import (
 )
 from neuronpulse.flash_attention import benchmark_attention_pair, run_attention_scaling_sweep
 from neuronpulse.paged_kv import run_paged_kv_benchmark
+from neuronpulse.quant_spec_transport import (
+    LockFreeSQCQRing,
+    MRIntervalTreeCache,
+    run_aot_bucket_and_packing_benchmark,
+    run_quant_spec_suite,
+    run_quantization_moe_benchmark,
+    run_speculative_decoding_benchmark,
+    run_transport_ring_mr_benchmark,
+)
 from neuronpulse.server import lambda_handler
 
 
@@ -188,6 +197,106 @@ class TestNeuronPulseRealMLSystems(unittest.TestCase):
         )
         self.assertEqual(br["statusCode"], 200)
         self.assertIn("nova_micro", json.loads(br["body"]))
+
+    def test_07_smoothquant_w8a8_w4a16_moe_and_tp_sharding(self) -> None:
+        qm = run_quantization_moe_benchmark(batch_tokens=48, in_features=128, out_features=256, alpha=0.5, group_size=32)
+        fb = qm["footprint_bytes"]
+        self.assertEqual(fb["w8a8_compression_vs_fp32_x"], 4.0)
+        self.assertEqual(fb["w4a16_compression_vs_fp16_x"], 3.56)
+        self.assertEqual(fb["w4a16_effective_bits_per_weight"], 4.5)
+
+        # SmoothQuant alpha=0.5 must substantially improve SQNR & cosine similarity over naive W8A8
+        self.assertGreater(qm["smoothquant_w8a8"]["cosine_similarity"], 0.999)
+        self.assertGreater(qm["smoothquant_w8a8"]["sqnr_gain_over_naive_db"], 8.0)
+        self.assertGreater(qm["smoothquant_w8a8"]["max_error_reduction_x"], 2.5)
+        self.assertGreater(qm["group_w4a16"]["cosine_similarity"], 0.99)
+
+        # Top-2 SwiGLU MoE load balancing & TP=4 multi-rank sharding parity
+        moe = qm["moe_swiglu"]
+        self.assertEqual(moe["active_expert_fraction_pct"], 25.0)
+        self.assertGreater(moe["unbalanced_router"]["drop_rate_pct"], moe["balanced_router"]["drop_rate_pct"])
+        self.assertLess(moe["balanced_router"]["load_cv"], moe["unbalanced_router"]["load_cv"])
+        self.assertTrue(moe["tp_sharding_verification"]["numerically_equivalent"])
+        self.assertLess(moe["tp_sharding_verification"]["max_abs_diff"], 1e-12)
+
+    def test_08_lossless_speculative_decoding_and_dp_aot_bucketing_bfd(self) -> None:
+        sd = run_speculative_decoding_benchmark(gamma=4, num_target_tokens=256, draft_alignment=0.80)
+        self.assertTrue(sd["lossless_distribution_preserved"])
+        self.assertLess(sd["exact_marginal_max_abs_diff"], 1e-12)
+        self.assertGreaterEqual(sd["tokens_per_target_step_x"], 2.3)
+        self.assertLessEqual(sd["tokens_per_target_step_x"], 3.4)
+        self.assertLess(sd["monte_carlo_tvd_speculative"], sd["monte_carlo_tvd_unverified_draft"])
+        self.assertEqual(sd["kv_final_consistent_slots"], sd["emitted_tokens"] + 2)
+
+        aot = run_aot_bucket_and_packing_benchmark(num_sequences=256, max_buckets=5, max_seq_len=2048)
+        self.assertTrue(aot["dp_optimal_buckets"]["verified_global_optimum"])
+        self.assertLessEqual(
+            aot["dp_optimal_buckets"]["padding_waste_tokens"],
+            aot["pow2_static_buckets"]["padding_waste_tokens"],
+        )
+        self.assertLess(
+            aot["dp_optimal_buckets"]["padding_waste_pct"],
+            aot["single_static_bucket"]["padding_waste_pct"] * 0.4,
+        )
+
+        bfd = aot["bfd_sequence_packing"]
+        self.assertTrue(bfd["zero_cross_doc_leakage_verified"])
+        self.assertEqual(bfd["cross_doc_attention_leakage"], 0.0)
+        self.assertLess(bfd["bfd_padding_waste_pct"], 4.0)
+        self.assertGreater(bfd["bin_reduction_x"], 2.5)
+
+    def test_09_lock_free_sq_cq_ring_and_mr_interval_tree_cache(self) -> None:
+        ring = LockFreeSQCQRing(capacity=64)
+        for i in range(32):
+            self.assertTrue(ring.post_send(wr_id=i, vaddr=0x1000 * (i + 1), length=4096, lkey=7, imm_seq=i))
+        self.assertEqual(ring.sq_occupancy, 32)
+        progressed = ring.progress_srd_multipath(ooo_stride=3)
+        self.assertEqual(progressed, 32)
+        self.assertEqual(ring.sq_occupancy, 0)
+        self.assertEqual(ring.cq_occupancy, 32)
+        reaped, nbytes = ring.poll_cq_batch(max_reap=64)
+        self.assertEqual(reaped, 32)
+        self.assertEqual(nbytes, 32 * 4096)
+        self.assertEqual(ring.cq_occupancy, 0)
+
+        cache = MRIntervalTreeCache()
+        lkey1, hit1 = cache.acquire_mr(0x7000_0000, 1024 * 1024)
+        self.assertFalse(hit1)
+        lkey2, hit2 = cache.acquire_mr(0x7000_0000 + 65536, 256 * 1024)
+        self.assertTrue(hit2)
+        self.assertEqual(lkey1, lkey2)
+        self.assertEqual(cache.invalidate_range(0x7000_8000, 4096), 1)
+        lkey3, hit3 = cache.acquire_mr(0x7000_0000 + 65536, 256 * 1024)
+        self.assertFalse(hit3)
+        self.assertNotEqual(lkey1, lkey3)
+
+        tr = run_transport_ring_mr_benchmark(ring_capacity=256, num_messages=2048, num_mr_regions=128, num_mr_lookups=512)
+        self.assertGreater(tr["sq_cq_ring"]["heap_alloc_reduction_pct"], 95.0)
+        self.assertTrue(tr["mr_interval_cache"]["avl_balanced_verified"])
+        self.assertTrue(tr["mr_interval_cache"]["invalidation_safety_check"]["verified"])
+        self.assertGreater(tr["mr_interval_cache"]["mr_cache_speedup_x"], 5.0)
+
+    def test_10_quant_spec_and_transport_ring_api_routes(self) -> None:
+        qs_get = lambda_handler({"rawPath": "/api/quant-spec", "requestContext": {"http": {"method": "GET"}}})
+        self.assertEqual(qs_get["statusCode"], 200)
+        qs_body = json.loads(qs_get["body"])
+        self.assertEqual(qs_body["quantization_and_moe"]["footprint_bytes"]["w8a8_compression_vs_fp32_x"], 4.0)
+        self.assertEqual(qs_body["quantization_and_moe"]["footprint_bytes"]["w4a16_compression_vs_fp16_x"], 3.56)
+        self.assertTrue(qs_body["speculative_decoding"]["lossless_distribution_preserved"])
+
+        tr_post = lambda_handler(
+            {
+                "rawPath": "/api/transport/ring",
+                "requestContext": {"http": {"method": "POST"}},
+                "body": json.dumps({"ring_capacity": 256, "num_messages": 2048, "num_mr_lookups": 512}),
+            }
+        )
+        self.assertEqual(tr_post["statusCode"], 200)
+        tr_body = json.loads(tr_post["body"])
+        self.assertTrue(tr_body["mr_interval_cache"]["avl_balanced_verified"])
+
+        qs_full = run_quant_spec_suite()
+        self.assertGreater(qs_full["suite_wall_ms"], 0.0)
 
 
 if __name__ == "__main__":

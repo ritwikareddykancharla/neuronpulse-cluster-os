@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 470" width="1120" height="470" role="img" aria-label="NeuronPulse Serverless ML Systems Architecture">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 510" width="1140" height="510" role="img" aria-label="NeuronPulse v2 Serverless ML Systems Architecture">
   <defs>
     <style>
       .bg { fill: #FAF7F2; }
@@ -9,7 +9,7 @@
       .box-purple { fill: #EDE9FE; stroke: #18181B; stroke-width: 2.2; }
       .shadow { fill: #18181B; opacity: 0.92; }
       .title { font-family: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 800; font-size: 16px; fill: #141413; }
-      .sub { font-family: 'Martian Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; fill: #3F3F46; }
+      .sub { font-family: 'Martian Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.6px; fill: #3F3F46; }
       .badge { font-family: 'Martian Mono', ui-monospace, monospace; font-weight: 700; font-size: 10.5px; fill: #FFFFFF; }
       .note { font-family: 'Georgia', serif; font-style: italic; font-size: 13px; fill: #1E40AF; }
       .wire { fill: none; stroke: #18181B; stroke-width: 2.1; stroke-linecap: round; }
@@ -23,84 +23,89 @@
     </marker>
   </defs>
 
-  <rect width="1120" height="470" class="bg"/>
+  <rect width="1140" height="510" class="bg"/>
 
   <!-- Header Banner -->
-  <rect x="28" y="22" width="1064" height="44" fill="#141413"/>
-  <text x="46" y="49" font-family="ui-monospace, Menlo, monospace" font-weight="700" font-size="13" fill="#FAF7F2">NEURONPULSE ARCHITECTURE · 100% SERVERLESS PYTHON 3.12 + BEDROCK NOVA · 0 EC2/GPU INSTANCES · $0.00 IDLE</text>
+  <rect x="28" y="22" width="1084" height="44" fill="#141413"/>
+  <text x="44" y="49" font-family="ui-monospace, Menlo, monospace" font-weight="700" font-size="12.6" fill="#FAF7F2">NEURONPULSE v2 ARCHITECTURE · SERVERLESS PYTHON 3.12 + BEDROCK NOVA · 0 EC2/GPU INSTANCES · $0.00 IDLE</text>
 
   <!-- Client Box -->
-  <rect x="34" y="184" width="176" height="118" class="shadow"/>
-  <rect x="30" y="180" width="176" height="118" class="box"/>
-  <rect x="30" y="180" width="176" height="24" fill="#2563EB"/>
-  <text x="40" y="196" class="badge">CLIENT STUDIO</text>
-  <text x="42" y="224" class="title">Browser UI</text>
-  <text x="42" y="244" class="sub">4 Live Sandboxes</text>
-  <text x="42" y="261" class="sub">Hash State (0 Storage)</text>
-  <text x="42" y="278" class="sub">Live JSON Telemetry</text>
+  <rect x="34" y="194" width="178" height="128" class="shadow"/>
+  <rect x="30" y="190" width="178" height="128" class="box"/>
+  <rect x="30" y="190" width="178" height="24" fill="#2563EB"/>
+  <text x="40" y="206" class="badge">CLIENT STUDIO</text>
+  <text x="42" y="234" class="title">Browser UI</text>
+  <text x="42" y="254" class="sub">5 Live Sandboxes</text>
+  <text x="42" y="272" class="sub">Hash State (0 Storage)</text>
+  <text x="42" y="290" class="sub">Quant, SpecDec &amp; Ring</text>
+  <text x="42" y="307" class="sub">Live JSON Telemetry</text>
 
   <!-- CloudFront Box -->
-  <rect x="258" y="174" width="198" height="138" class="shadow"/>
-  <rect x="254" y="170" width="198" height="138" class="box-blue"/>
-  <rect x="254" y="170" width="198" height="24" fill="#18181B"/>
-  <text x="264" y="186" class="badge">EDGE CDN · E2ZSOS7XVJ55C7</text>
-  <text x="266" y="215" class="title">Amazon CloudFront</text>
-  <text x="266" y="236" class="sub">Default (*) -&gt; S3 OAC</text>
-  <text x="266" y="254" class="sub">/api/* -&gt; Lambda URL</text>
-  <text x="266" y="272" class="sub">TLS 1.3 · HTTP/2+3</text>
-  <text x="266" y="290" class="sub">No-Store API Bypass</text>
+  <rect x="258" y="184" width="200" height="146" class="shadow"/>
+  <rect x="254" y="180" width="200" height="146" class="box-blue"/>
+  <rect x="254" y="180" width="200" height="24" fill="#18181B"/>
+  <text x="264" y="196" class="badge">EDGE CDN · E2ZSOS7XVJ55C7</text>
+  <text x="266" y="225" class="title">Amazon CloudFront</text>
+  <text x="266" y="246" class="sub">Default (*) -&gt; S3 OAC</text>
+  <text x="266" y="264" class="sub">/api/* -&gt; Lambda URL</text>
+  <text x="266" y="282" class="sub">TLS 1.3 · HTTP/2+3</text>
+  <text x="266" y="300" class="sub">No-Store API Bypass</text>
 
   <!-- Origin 1: Private S3 -->
-  <rect x="516" y="92" width="246" height="104" class="shadow"/>
-  <rect x="512" y="88" width="246" height="104" class="box-amber"/>
-  <text x="526" y="115" class="title">Private S3 Bucket (OAC)</text>
-  <text x="526" y="136" class="sub">neuronpulse-web-*-us-west-2</text>
-  <text x="526" y="154" class="sub">SigV4 Origin Access Control</text>
-  <text x="526" y="172" class="sub">BlockPublicAccess = TRUE</text>
+  <rect x="514" y="88" width="268" height="104" class="shadow"/>
+  <rect x="510" y="84" width="268" height="104" class="box-amber"/>
+  <text x="524" y="111" class="title">Private S3 Bucket (OAC)</text>
+  <text x="524" y="132" class="sub">neuronpulse-web-*-us-west-2</text>
+  <text x="524" y="150" class="sub">SigV4 Origin Access Control</text>
+  <text x="524" y="168" class="sub">BlockPublicAccess = TRUE</text>
 
   <!-- Origin 2: Python 3.12 Lambda -->
-  <rect x="516" y="226" width="246" height="206" class="shadow"/>
-  <rect x="512" y="222" width="246" height="206" class="box-green"/>
-  <rect x="512" y="222" width="246" height="24" fill="#059669"/>
-  <text x="524" y="238" class="badge">256 MB PYTHON 3.12 LAMBDA</text>
-  <text x="526" y="266" class="title">neuronpulse-api-origin</text>
-  <text x="526" y="288" class="sub">1. compiler_ir.py (DCE/CSE/Fuse)</text>
-  <text x="526" y="308" class="sub">2. flash_attention.py (Tiled O(N))</text>
-  <text x="526" y="328" class="sub">3. paged_kv.py (Block=16 + CoW)</text>
-  <text x="526" y="348" class="sub">4. correlator.py (64:1 Causal)</text>
-  <text x="526" y="372" class="sub">tracemalloc + perf_counter()</text>
-  <text x="526" y="390" class="sub">max_abs_diff &lt; 1e-9 verified</text>
-  <text x="526" y="408" class="sub">$0.00/hr idle serverless</text>
+  <rect x="514" y="214" width="268" height="262" class="shadow"/>
+  <rect x="510" y="210" width="268" height="262" class="box-green"/>
+  <rect x="510" y="210" width="268" height="24" fill="#059669"/>
+  <text x="522" y="226" class="badge">256 MB PYTHON 3.12 LAMBDA</text>
+  <text x="524" y="253" class="title">neuronpulse-api-origin</text>
+  <text x="524" y="274" class="sub">1. compiler_ir.py (-87.8% mem)</text>
+  <text x="524" y="293" class="sub">2. flash_attention.py (20.74x)</text>
+  <text x="524" y="312" class="sub">3. paged_kv.py (Block=16 + CoW)</text>
+  <text x="524" y="331" class="sub">4. quant_spec_transport.py:</text>
+  <text x="524" y="349" class="sub">   W8A8 4.0x · W4A16 3.56x · MoE</text>
+  <text x="524" y="367" class="sub">   SpecDec 3.05x · DP Buckets/BFD</text>
+  <text x="524" y="385" class="sub">   SQ/CQ 64B Ring · AVL MR Cache</text>
+  <text x="524" y="404" class="sub">5. correlator.py (64:1 Causal)</text>
+  <text x="524" y="428" class="sub">tracemalloc + perf_counter()</text>
+  <text x="524" y="446" class="sub">IEEE-754 parity · $0.00/hr idle</text>
 
   <!-- AWS Bedrock Runtime -->
-  <rect x="826" y="240" width="264" height="178" class="shadow"/>
-  <rect x="822" y="236" width="264" height="178" class="box-purple"/>
-  <rect x="822" y="236" width="264" height="24" fill="#6D28D9"/>
-  <text x="834" y="252" class="badge">LIVE BEDROCK · US-WEST-2</text>
-  <text x="836" y="280" class="title">Bedrock Converse API</text>
-  <text x="836" y="302" class="sub">us.amazon.nova-micro-v1:0</text>
-  <text x="836" y="320" class="sub">  p50: 356ms · 125.3 tok/s</text>
-  <text x="836" y="342" class="sub">us.amazon.nova-lite-v1:0</text>
-  <text x="836" y="360" class="sub">  p50: 668ms · 72.9 tok/s</text>
-  <text x="836" y="384" class="sub">IAM Least-Privilege Invoke</text>
-  <text x="836" y="401" class="sub">~$0.00013 per benchmark suite</text>
+  <rect x="842" y="246" width="268" height="192" class="shadow"/>
+  <rect x="838" y="242" width="268" height="192" class="box-purple"/>
+  <rect x="838" y="242" width="268" height="24" fill="#6D28D9"/>
+  <text x="850" y="258" class="badge">LIVE BEDROCK · US-WEST-2</text>
+  <text x="852" y="286" class="title">Bedrock Converse API</text>
+  <text x="852" y="308" class="sub">us.amazon.nova-micro-v1:0</text>
+  <text x="852" y="326" class="sub">  p50: 474ms · 98.82 tok/s</text>
+  <text x="852" y="348" class="sub">us.amazon.nova-lite-v1:0</text>
+  <text x="852" y="366" class="sub">  p50: 651ms · 82.48 tok/s</text>
+  <text x="852" y="390" class="sub">IAM Least-Privilege Invoke</text>
+  <text x="852" y="408" class="sub">$0.000132 per benchmark suite</text>
 
   <!-- Benchmark Artifact Box -->
-  <rect x="826" y="92" width="264" height="104" class="shadow"/>
-  <rect x="822" y="88" width="264" height="104" class="box"/>
-  <text x="836" y="115" class="title">Measured Telemetry</text>
-  <text x="836" y="136" class="sub">benchmarks/latest_results.json</text>
-  <text x="836" y="154" class="sub">CPython 3.12.14 + Live Bedrock</text>
-  <text x="836" y="172" class="sub">0 Simulated / 0 Fake Constants</text>
+  <rect x="842" y="88" width="268" height="114" class="shadow"/>
+  <rect x="838" y="84" width="268" height="114" class="box"/>
+  <text x="852" y="111" class="title">Measured Telemetry</text>
+  <text x="852" y="132" class="sub">benchmarks/latest_results.json</text>
+  <text x="852" y="150" class="sub">10/10 Unit &amp; API Tests Passing</text>
+  <text x="852" y="168" class="sub">0 Simulated / 0 Fake Constants</text>
+  <text x="852" y="186" class="sub">100% Executed Python + Bedrock</text>
 
   <!-- Connectors -->
-  <path d="M 206 238 C 225 236, 236 238, 252 238" class="wire" marker-end="url(#arrow)"/>
-  <path d="M 452 206 C 478 180, 488 148, 510 142" class="wire" marker-end="url(#arrow)"/>
-  <path d="M 452 268 C 478 286, 488 308, 510 314" class="wire" marker-end="url(#arrow)"/>
-  <path d="M 758 326 C 784 324, 798 326, 820 326" class="wire" marker-end="url(#arrow)"/>
-  <path d="M 758 262 C 788 220, 796 168, 820 148" class="wire-dash" marker-end="url(#arrow-blue)"/>
+  <path d="M 208 250 C 226 248, 236 250, 252 250" class="wire" marker-end="url(#arrow)"/>
+  <path d="M 454 214 C 478 186, 488 148, 508 140" class="wire" marker-end="url(#arrow)"/>
+  <path d="M 454 282 C 478 298, 488 320, 508 326" class="wire" marker-end="url(#arrow)"/>
+  <path d="M 778 342 C 804 340, 816 342, 836 342" class="wire" marker-end="url(#arrow)"/>
+  <path d="M 778 268 C 806 226, 814 170, 836 148" class="wire-dash" marker-end="url(#arrow-blue)"/>
 
   <text x="466" y="132" class="note">GET /</text>
-  <text x="462" y="302" class="note">POST /api/*</text>
-  <text x="767" y="316" class="note">boto3</text>
+  <text x="460" y="314" class="note">POST /api/*</text>
+  <text x="786" y="332" class="note">boto3</text>
 </svg>

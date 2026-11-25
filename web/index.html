@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuronPulse: Cutting LLM Memory Use and Latency With Graph Fusion, Tiled Attention, and Paged KV Cache</title>
-  <meta name="description" content="NeuronPulse cuts LLM memory usage and latency in Python with computation-graph fusion, tiled attention, paged KV cache sharing, distributed worker fault correlation, and live Amazon Bedrock comparisons." />
+  <title>NeuronPulse v2: LLM Compiler Fusion, Tiled Attention, Paged KV, SmoothQuant, Speculative Decoding &amp; Transport Ring</title>
+  <meta name="description" content="NeuronPulse v2 cuts LLM memory use and latency in Python with SSA graph fusion, tiled FlashAttention, paged KV sharing, SmoothQuant W8A8 &amp; W4A16 quantization, Top-2 SwiGLU MoE, speculative decoding, DP AOT sequence bucketing, binary SQ/CQ transport rings, and live Amazon Bedrock comparisons." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&amp;family=Martian+Mono:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&amp;family=Schibsted+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
@@ -914,11 +914,11 @@
     /* Interactive Demo Tabs */
     .tab-bar {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.8rem;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.72rem;
       margin-bottom: 1.45rem;
     }
-    @media (max-width: 980px) {
+    @media (max-width: 1120px) {
       .tab-bar { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 580px) {
@@ -1227,13 +1227,13 @@
         </div>
       </div>
 
-      <h1>NeuronPulse: Cutting LLM Memory Use and Latency With Graph Fusion, Tiled Attention, and Paged KV Cache</h1>
+      <h1>NeuronPulse v2: LLM Graph Fusion, Tiled Attention, Paged KV, Quantization, Speculative Decoding &amp; Transport Ring</h1>
       <p class="hero-sub">
-        Large language models run out of memory long before they run out of compute. Storing temporary layer outputs, full attention tables, and half-empty caches wastes gigabytes of RAM. NeuronPulse fuses graph operations, computes attention in small tiles, shares prompt caches across conversations, and compares live Amazon Bedrock models.
+        Large language model serving stacks hit memory bandwidth, static padding, and transport registration bottlenecks long before raw compute saturates. NeuronPulse v2 fuses SSA graph ops, streams attention in small tiles, shares paged KV blocks, compresses weights with SmoothQuant W8A8 and 32-group W4A16 alongside Top-2 SwiGLU MoE, accelerates decoding via lossless rejection sampling and DP AOT bucketing, and executes binary SQ/CQ descriptor rings with an AVL interval-tree MR cache.
       </p>
 
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#studio">▶ Try the Live Demo ↓</a>
+        <a class="btn btn-primary" href="#studio">▶ Try the 5 Live Sandboxes ↓</a>
         <a class="btn btn-secondary" href="#architecture">See How It Works ↓</a>
         <a class="btn btn-secondary" href="#benchmarks">View Test Results ↓</a>
       </div>
@@ -1241,13 +1241,15 @@
       <div class="kpi-strip" id="heroKpiStrip"></div>
 
       <div class="pipeline-bar" role="region" aria-label="NeuronPulse Optimization Pipeline">
-        <div class="pipe-step"><span class="pipe-num">01</span> Fuse Graph Operations</div>
+        <div class="pipe-step"><span class="pipe-num">01</span> Fuse SSA Graphs</div>
         <span class="pipe-arrow">→</span>
-        <div class="pipe-step"><span class="pipe-num">02</span> Stream Attention in Small Tiles</div>
+        <div class="pipe-step"><span class="pipe-num">02</span> Stream Tiled Attention</div>
         <span class="pipe-arrow">→</span>
-        <div class="pipe-step"><span class="pipe-num">03</span> Share Prompt Cache Blocks</div>
+        <div class="pipe-step"><span class="pipe-num">03</span> Share Paged KV</div>
         <span class="pipe-arrow">→</span>
-        <div class="pipe-step"><span class="pipe-num">04</span> Isolate Faults &amp; Compare Bedrock</div>
+        <div class="pipe-step"><span class="pipe-num">04</span> Quantize, Spec-Decode &amp; Ring</div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">05</span> Correlate &amp; Profile Bedrock</div>
       </div>
     </div>
   </section>
@@ -1269,10 +1271,10 @@
 
       <div class="overview-callout">
         <h3>
-          <span>Four Memory and Latency Bottlenecks in LLM Serving</span>
+          <span>Memory, Decoding, Bucketing, and Transport Bottlenecks in LLM Serving</span>
         </h3>
         <p>
-          Running an unoptimized model graph allocates a fresh intermediate matrix after every individual operation instead of fusing consecutive steps in place. Standard attention materializes a full <code>512 × 512</code> score table even when scores can be accumulated <code>32</code> rows at a time. Contiguous KV-cache allocators reserve <code>1,024</code> token slots upfront for a 50-token chat while storing <code>64</code> separate copies of the same system prompt. And when one worker in a 64-worker job runs out of memory, the other 63 workers emit timeout errors that arrive out of order. NeuronPulse implements each of these four fixes in Python and measures memory, latency, and Bedrock inference cost directly.
+          Unoptimized computation graphs materialize temporary matrices at every step, naive attention allocates full <code>N × N</code> score tables, and contiguous KV-cache arenas reserve <code>1,024</code> slots upfront while duplicating shared system prompts. Beyond activations and KV memory, FP32/FP16 weights bottleneck bandwidth when activation outliers break naive <code>INT8</code> scaling, single-token autoregressive decoding runs one full target pass per token, static single-shape compilation wastes <code>73.99%</code> of slots on padding, and cold <code>4 KiB</code> page pinning stalls collective messaging. NeuronPulse v2 implements and measures each fix directly in Python alongside live Amazon Bedrock profiling.
         </p>
       </div>
 
@@ -1338,7 +1340,29 @@
 
         <div class="problem-card">
           <div>
-            <span class="step-badge">04 · TIMEOUT STORMS &amp; MODEL TIERING</span>
+            <span class="step-badge">04 · OUTLIER WEIGHTS &amp; STATIC PADDING</span>
+            <h3>Activation Outliers, Single-Token Decode &amp; AOT Padding</h3>
+            <p>
+              Systematic <code>18×</code> activation outlier channels crush normal channels under naive <code>INT8</code> scaling, single-token decoding requires <code>1</code> full target pass per token, and single-shape <code>[2048]</code> AOT compilation wastes nearly three quarters of token slots on padding.
+            </p>
+          </div>
+          <div class="problem-stat" id="probStatQuantSpec"></div>
+        </div>
+
+        <div class="problem-card">
+          <div>
+            <span class="step-badge">05 · TRANSPORT RING &amp; MR PAGE PINNING</span>
+            <h3>Per-Message Heap Descriptors &amp; Cold 4 KiB Page Walks</h3>
+            <p>
+              Allocating fresh descriptor dictionaries per message inflates collector pressure, while calling cold virtual-page pinning (<code>4 KiB</code> frame walks) on every recurring <code>1 MiB</code> tensor slice stalls RDMA and multipath SRD collectives.
+            </p>
+          </div>
+          <div class="problem-stat" id="probStatTransport"></div>
+        </div>
+
+        <div class="problem-card">
+          <div>
+            <span class="step-badge">06 · TIMEOUT STORMS &amp; MODEL TIERING</span>
             <h3>63× Collective Timeout Cascades &amp; Model Selection</h3>
             <p>
               When one worker in a 64-rank group hits an out-of-memory fault or socket reset, all 63 peers emit barrier timeouts that arrive shuffled at log collectors. Routing text triage to larger models without measured <code>p50</code>/<code>p95</code> latency and token cost adds avoidable delay.
@@ -1349,7 +1373,7 @@
       </div>
 
       <div class="summary-callout">
-        <strong>Measured Execution:</strong> Every number on this page, in <code>benchmarks/latest_results.json</code>, and returned by <code>/api/*</code> comes from executing Python 3.12 code and live <code>boto3</code> Amazon Bedrock Converse API calls in <code>us-west-2</code>.
+        <strong>Measured Execution:</strong> Every number on this page, in <code>benchmarks/latest_results.json</code>, and returned by <code>/api/*</code> comes from executing Python code and live <code>boto3</code> Amazon Bedrock Converse API calls in <code>us-west-2</code>.
       </div>
     </section>
 
@@ -1419,7 +1443,7 @@
             <path class="ex-stroke-main" d="M 38,56 Q 136,53 234,57 Q 238,98 233,140 Q 135,143 39,139 Q 35,97 38,56 Z" fill="none" stroke="#18181B" stroke-width="2.1" stroke-linejoin="round" />
             <path d="M 40,58 Q 138,56 232,59 Q 235,99 231,138 Q 134,140 41,137 Q 37,96 40,58 Z" fill="none" stroke="#18181B" stroke-width="1.1" opacity="0.65" />
             <text x="136" y="84" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#18181B">Browser Studio</text>
-            <text x="136" y="106" text-anchor="middle" class="ex-mono" font-size="10.1" font-weight="600" fill="#1E3A8A">4 Live Sandboxes + TOC</text>
+            <text x="136" y="106" text-anchor="middle" class="ex-mono" font-size="10.1" font-weight="600" fill="#1E3A8A">5 Live Sandboxes + TOC</text>
             <text x="136" y="124" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#3F3F46">location.hash · 0 Storage</text>
           </g>
 
@@ -1470,14 +1494,14 @@
             <text x="948" y="66" class="ex-hand" font-size="19" font-weight="700" fill="#92400E">📌 Zero-Idle Economics</text>
             <text x="948" y="89" class="ex-hand" font-size="17" font-weight="600" fill="#18181B">• 0 EC2 / 0 SageMaker Nodes</text>
             <text x="948" y="110" class="ex-hand" font-size="17" font-weight="600" fill="#18181B">• 256 MB Lambda + S3 OAC</text>
-            <text x="948" y="132" class="ex-hand" font-size="17" font-weight="700" fill="#B45309">• $0.000129 / full benchmark</text>
+            <text x="948" y="132" class="ex-hand" font-size="17" font-weight="700" fill="#B45309">• $0.000132 / full benchmark</text>
           </g>
 
           <path d="M 730,157 Q 500,180 340,228" fill="none" stroke="#18181B" stroke-width="2.1" stroke-dasharray="7 5" stroke-linecap="round" />
           <path d="M 349,221 L 338,229 L 351,232" fill="none" stroke="#18181B" stroke-width="2.1" />
           <path d="M 805,157 Q 860,182 885,228" fill="none" stroke="#18181B" stroke-width="2.1" stroke-dasharray="7 5" stroke-linecap="round" />
           <path d="M 877,223 L 886,230 L 888,218" fill="none" stroke="#18181B" stroke-width="2.1" />
-          <text x="612" y="187" text-anchor="middle" class="ex-hand" font-size="16" font-weight="700" fill="#18181B">In-Process Python 3.12 Execution (tracemalloc + perf_counter)</text>
+          <text x="612" y="187" text-anchor="middle" class="ex-hand" font-size="16" font-weight="700" fill="#18181B">In-Process Python Execution (tracemalloc + perf_counter)</text>
 
           <!-- PLANE 2: COMPILER IR & ONLINE-SOFTMAX TILED ATTENTION PLANE -->
           <path d="M 22,198 Q 610,194 1196,199 Q 1200,274 1195,350 Q 608,354 24,349 Q 19,273 22,198 Z" fill="#F8FAFC" stroke="#1E40AF" stroke-width="1.6" stroke-dasharray="8 6" />
@@ -1490,7 +1514,7 @@
             <path d="M 45,238 Q 313,235 579,239 Q 582,285 578,331 Q 311,335 46,330 Z" fill="none" stroke="#18181B" stroke-width="1.1" opacity="0.65" />
             <text x="312" y="262" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#18181B">SSA Computation-Graph Compiler Pass</text>
             <text x="312" y="284" text-anchor="middle" class="ex-mono" font-size="10" font-weight="700" fill="#1E3A8A">ConstantFold+CSE → DeadCodeElim → MatMulBiasGeluFusion</text>
-            <text x="312" y="304" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#065F46">27 → 10 Ops (-63.0%) · -87.8% Peak Tensor Bytes · 1.92× Speedup</text>
+            <text x="312" y="304" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#065F46">27 → 10 Ops (-63.0%) · -87.8% Peak Tensor Bytes · 1.75× Speedup</text>
             <text x="312" y="322" text-anchor="middle" class="ex-mono" font-size="9.2" fill="#3F3F46">neuronpulse/compiler_ir.py · POST /api/compiler/optimize</text>
           </g>
 
@@ -1501,39 +1525,49 @@
             <path d="M 631,238 Q 903,235 1173,239 Q 1176,285 1172,331 Q 901,335 632,330 Z" fill="none" stroke="#18181B" stroke-width="1.1" opacity="0.65" />
             <text x="902" y="262" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#18181B">Online-Softmax Block-Tiled FlashAttention</text>
             <text x="902" y="284" text-anchor="middle" class="ex-mono" font-size="10" font-weight="700" fill="#065F46">Milakov-Gimelshein / Dao Streaming Tiles (B = 32 / 64)</text>
-            <text x="902" y="304" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#1E3A8A">17.45 MB → 0.84 MB @ N=512 (-95.18% · 20.76×) · diff = 1.21e-17</text>
+            <text x="902" y="304" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#1E3A8A">17.45 MB → 0.84 MB @ N=512 (-95.18% · 20.74×) · diff = 1.21e-17</text>
             <text x="902" y="322" text-anchor="middle" class="ex-mono" font-size="9.2" fill="#3F3F46">neuronpulse/flash_attention.py · POST /api/attention/run</text>
           </g>
 
-          <path d="M 312,336 Q 310,364 312,414" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
-          <path d="M 306,406 L 312,416 L 318,406" fill="none" stroke="#18181B" stroke-width="2" />
-          <path d="M 902,336 Q 900,364 902,414" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
-          <path d="M 896,406 L 902,416 L 908,406" fill="none" stroke="#18181B" stroke-width="2" />
+          <path d="M 312,336 Q 240,364 218,414" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 214,405 L 218,416 L 226,407" fill="none" stroke="#18181B" stroke-width="2" />
+          <path d="M 605,336 Q 608,364 610,414" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 604,406 L 610,416 L 616,406" fill="none" stroke="#18181B" stroke-width="2" />
+          <path d="M 902,336 Q 970,364 1002,414" fill="none" stroke="#18181B" stroke-width="2" stroke-dasharray="6 4" />
+          <path d="M 994,407 L 1002,416 L 1006,405" fill="none" stroke="#18181B" stroke-width="2" />
 
-          <!-- PLANE 3: SERVING KV-CACHE & DISTRIBUTED FAULT CORRELATION -->
+          <!-- PLANE 3: SERVING KV-CACHE, QUANTIZATION/SPEC-DEC/RING & DISTRIBUTED TELEMETRY -->
           <path d="M 22,380 Q 610,376 1196,381 Q 1200,456 1195,532 Q 608,536 24,531 Q 19,455 22,380 Z" fill="#F0FDF4" stroke="#065F46" stroke-width="1.6" stroke-dasharray="8 6" />
-          <text x="36" y="404" class="ex-hand" font-size="21" font-weight="700" fill="#065F46">③ Serving KV-Cache Block Management &amp; Distributed Worker Telemetry Plane</text>
+          <text x="36" y="404" class="ex-hand" font-size="21" font-weight="700" fill="#065F46">③ Paged KV, SmoothQuant / Speculative Decoding / SQ-CQ Ring &amp; Worker Fault Plane</text>
 
           <!-- Node 7: Paged KV-Cache + CoW -->
           <g class="ex-node" data-arch-node="paged-kv" tabindex="0">
-            <path d="M 42,418 Q 312,414 582,419 Q 586,468 581,517 Q 310,521 43,516 Q 39,467 42,418 Z" fill="#FEF3C7" />
-            <path class="ex-stroke-main" d="M 42,418 Q 312,414 582,419 Q 586,468 581,517 Q 310,521 43,516 Q 39,467 42,418 Z" fill="none" stroke="#18181B" stroke-width="2.1" />
-            <path d="M 45,421 Q 313,418 579,422 Q 582,468 578,514 Q 311,518 46,513 Z" fill="none" stroke="#18181B" stroke-width="1.1" opacity="0.65" />
-            <text x="312" y="445" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#18181B">Paged KV-Cache + CoW Prefix Allocator</text>
-            <text x="312" y="467" text-anchor="middle" class="ex-mono" font-size="10" font-weight="700" fill="#92400E">block_size = 16 · Chained SHA-256 Prefix Table · CoW Fork</text>
-            <text x="312" y="487" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#065F46">Frag 46.18% → 2.37% · -68.55% Bytes · 64 vs 26 Reqs (2.46×)</text>
-            <text x="312" y="505" text-anchor="middle" class="ex-mono" font-size="9.2" fill="#3F3F46">neuronpulse/paged_kv.py · POST /api/kvcache/run</text>
+            <path d="M 38,418 Q 216,414 394,419 Q 398,468 393,517 Q 214,521 40,516 Q 35,467 38,418 Z" fill="#FEF3C7" />
+            <path class="ex-stroke-main" d="M 38,418 Q 216,414 394,419 Q 398,468 393,517 Q 214,521 40,516 Q 35,467 38,418 Z" fill="none" stroke="#18181B" stroke-width="2.1" />
+            <text x="216" y="445" text-anchor="middle" class="ex-hand" font-size="21" font-weight="700" fill="#18181B">Paged KV-Cache + CoW</text>
+            <text x="216" y="466" text-anchor="middle" class="ex-mono" font-size="9.3" font-weight="700" fill="#92400E">block_size=16 · SHA-256 Prefix</text>
+            <text x="216" y="486" text-anchor="middle" class="ex-mono" font-size="9.1" fill="#065F46">Frag 46.18%→2.37% · 2.46× Reqs</text>
+            <text x="216" y="505" text-anchor="middle" class="ex-mono" font-size="8.9" fill="#3F3F46">POST /api/kvcache/run</text>
+          </g>
+
+          <!-- Node 7B: Quantization, Speculative Decoding & SQ/CQ + MR Ring -->
+          <g class="ex-node" data-arch-node="quant-spec-transport" tabindex="0">
+            <path d="M 418,418 Q 610,414 802,419 Q 806,468 801,517 Q 608,521 420,516 Q 415,467 418,418 Z" fill="#DCFCE7" />
+            <path class="ex-stroke-main" d="M 418,418 Q 610,414 802,419 Q 806,468 801,517 Q 608,521 420,516 Q 415,467 418,418 Z" fill="none" stroke="#18181B" stroke-width="2.1" />
+            <text x="610" y="445" text-anchor="middle" class="ex-hand" font-size="21" font-weight="700" fill="#18181B">Quant, SpecDec &amp; SQ/CQ Ring</text>
+            <text x="610" y="466" text-anchor="middle" class="ex-mono" font-size="9.2" font-weight="700" fill="#065F46">W8A8 4.0× · W4A16 3.56× · Spec 3.05×</text>
+            <text x="610" y="486" text-anchor="middle" class="ex-mono" font-size="9.1" fill="#1E3A8A">DP Buckets · 64B Ring · 6.16× MR AVL</text>
+            <text x="610" y="505" text-anchor="middle" class="ex-mono" font-size="8.9" fill="#3F3F46">/api/quant-spec &amp; /api/transport/ring</text>
           </g>
 
           <!-- Node 8: CrossNodeErrorCorrelator -->
           <g class="ex-node" data-arch-node="fault-correlator" tabindex="0">
-            <path d="M 628,418 Q 902,414 1176,419 Q 1180,468 1175,517 Q 900,521 629,516 Q 625,467 628,418 Z" fill="#FFE8D6" />
-            <path class="ex-stroke-main" d="M 628,418 Q 902,414 1176,419 Q 1180,468 1175,517 Q 900,521 629,516 Q 625,467 628,418 Z" fill="none" stroke="#18181B" stroke-width="2.1" />
-            <path d="M 631,421 Q 903,418 1173,422 Q 1176,468 1172,514 Q 901,518 632,513 Z" fill="none" stroke="#18181B" stroke-width="1.1" opacity="0.65" />
-            <text x="902" y="445" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#18181B">Distributed Worker Causal Correlator</text>
-            <text x="902" y="467" text-anchor="middle" class="ex-mono" font-size="10" font-weight="700" fill="#9A3412">Subsystem Causal Priority + Monotonic Nanosecond Ordering</text>
-            <text x="902" y="487" text-anchor="middle" class="ex-mono" font-size="9.5" fill="#065F46">100.0% Root Isolation (48/48) vs 2.1% Arrival · 64:1 (3.74ms)</text>
-            <text x="902" y="505" text-anchor="middle" class="ex-mono" font-size="9.2" fill="#3F3F46">neuronpulse/correlator.py · POST /api/correlator/run</text>
+            <path d="M 826,418 Q 1004,414 1182,419 Q 1186,468 1181,517 Q 1002,521 828,516 Q 823,467 826,418 Z" fill="#FFE8D6" />
+            <path class="ex-stroke-main" d="M 826,418 Q 1004,414 1182,419 Q 1186,468 1181,517 Q 1002,521 828,516 Q 823,467 826,418 Z" fill="none" stroke="#18181B" stroke-width="2.1" />
+            <text x="1004" y="445" text-anchor="middle" class="ex-hand" font-size="21" font-weight="700" fill="#18181B">Worker Causal Correlator</text>
+            <text x="1004" y="466" text-anchor="middle" class="ex-mono" font-size="9.3" font-weight="700" fill="#9A3412">Subsystem Causal Precedence</text>
+            <text x="1004" y="486" text-anchor="middle" class="ex-mono" font-size="9.1" fill="#065F46">100.0% Root (48/48) · 64:1 (2.97ms)</text>
+            <text x="1004" y="505" text-anchor="middle" class="ex-mono" font-size="8.9" fill="#3F3F46">POST /api/correlator/run</text>
           </g>
 
           <path d="M 780,519 Q 500,554 240,586" fill="none" stroke="#6D28D9" stroke-width="2.1" stroke-dasharray="7 5" />
@@ -1555,9 +1589,9 @@
             <path class="ex-stroke-main" d="M 38,608 Q 216,603 394,609 Q 398,668 393,727 Q 214,732 40,726 Q 35,666 38,608 Z" fill="none" stroke="#18181B" stroke-width="2.2" />
             <text x="216" y="635" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#4C1D95">Amazon Nova Micro</text>
             <text x="216" y="656" text-anchor="middle" class="ex-mono" font-size="9.8" font-weight="700" fill="#18181B">us.amazon.nova-micro-v1:0</text>
-            <text x="216" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#5B21B6">p50: 356.0ms · p95: 455.4ms · 125.33 tok/s</text>
+            <text x="216" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#5B21B6">p50: 474.0ms · p95: 577.2ms · 98.82 tok/s</text>
             <rect x="64" y="690" width="304" height="25" fill="#FFFFFF" stroke="#18181B" stroke-width="1.5" />
-            <text x="216" y="707" text-anchor="middle" class="ex-mono" font-size="9.4" font-weight="700" fill="#059669">$0.00896 / 1k reqs (-46.5% vs Lite)</text>
+            <text x="216" y="707" text-anchor="middle" class="ex-mono" font-size="9.4" font-weight="700" fill="#059669">$0.00892 / 1k reqs (-48.4% vs Lite)</text>
           </g>
 
           <!-- Node 10: Nova Lite -->
@@ -1566,9 +1600,9 @@
             <path class="ex-stroke-main" d="M 430,608 Q 610,603 790,609 Q 794,668 789,727 Q 608,732 432,726 Q 427,666 430,608 Z" fill="none" stroke="#18181B" stroke-width="2.2" />
             <text x="610" y="635" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#5B21B6">Amazon Nova Lite</text>
             <text x="610" y="656" text-anchor="middle" class="ex-mono" font-size="9.8" font-weight="700" fill="#18181B">us.amazon.nova-lite-v1:0</text>
-            <text x="610" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#4C1D95">p50: 668.0ms · p95: 904.6ms · 72.89 tok/s</text>
+            <text x="610" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#4C1D95">p50: 651.0ms · p95: 798.8ms · 82.48 tok/s</text>
             <rect x="458" y="690" width="304" height="25" fill="#FFFFFF" stroke="#18181B" stroke-width="1.5" />
-            <text x="610" y="707" text-anchor="middle" class="ex-mono" font-size="9.4" font-weight="700" fill="#6D28D9">$0.01676 / 1k reqs · Multimodal Tier</text>
+            <text x="610" y="707" text-anchor="middle" class="ex-mono" font-size="9.4" font-weight="700" fill="#6D28D9">$0.0173 / 1k reqs · Multimodal Tier</text>
           </g>
 
           <!-- Node 11: Benchmark Harness -->
@@ -1577,7 +1611,7 @@
             <path class="ex-stroke-main" d="M 826,608 Q 1006,603 1186,609 Q 1190,668 1185,727 Q 1004,732 828,726 Q 823,666 826,608 Z" fill="none" stroke="#18181B" stroke-width="2.2" />
             <text x="1006" y="635" text-anchor="middle" class="ex-hand" font-size="22" font-weight="700" fill="#065F46">Measured Benchmark Suite</text>
             <text x="1006" y="656" text-anchor="middle" class="ex-mono" font-size="9.8" font-weight="700" fill="#18181B">benchmarks/latest_results.json</text>
-            <text x="1006" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#065F46">CPython 3.12.14 · unittest 6/6 Passing</text>
+            <text x="1006" y="676" text-anchor="middle" class="ex-mono" font-size="9.4" fill="#065F46">10/10 Unit &amp; API Tests Passing</text>
             <rect x="854" y="690" width="304" height="25" fill="#FFFFFF" stroke="#18181B" stroke-width="1.5" />
             <text x="1006" y="707" text-anchor="middle" class="ex-mono" font-size="9.4" font-weight="700" fill="#1E40AF">0 Hardcoded Constants · 100% Executed</text>
           </g>
@@ -1594,10 +1628,11 @@
           <button type="button" class="arch-node-pill" data-arch-btn="compiler-ir">5. Graph Compiler IR</button>
           <button type="button" class="arch-node-pill" data-arch-btn="flash-attn">6. Tiled FlashAttention</button>
           <button type="button" class="arch-node-pill" data-arch-btn="paged-kv">7. Paged KV + CoW</button>
-          <button type="button" class="arch-node-pill" data-arch-btn="fault-correlator">8. Causal Correlator</button>
-          <button type="button" class="arch-node-pill" data-arch-btn="bedrock-micro">9. Bedrock Nova Micro</button>
-          <button type="button" class="arch-node-pill" data-arch-btn="bedrock-lite">10. Bedrock Nova Lite</button>
-          <button type="button" class="arch-node-pill" data-arch-btn="bench-harness">11. Benchmark Suite</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="quant-spec-transport">8. Quant, SpecDec &amp; SQ/CQ Ring</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="fault-correlator">9. Causal Correlator</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="bedrock-micro">10. Bedrock Nova Micro</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="bedrock-lite">11. Bedrock Nova Lite</button>
+          <button type="button" class="arch-node-pill" data-arch-btn="bench-harness">12. Benchmark Suite</button>
         </div>
         <div id="archInspectorDetail"></div>
       </div>
@@ -1612,7 +1647,7 @@
           <span class="section-kicker">03 · Implementation</span>
           <h2 class="section-title">Implementation</h2>
           <p class="section-desc">
-            Four Python 3.12 modules in <code>neuronpulse/</code> built on standard library primitives (<code>math.sumprod</code>, <code>math.erf</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>) and <code>boto3</code>.
+            Five Python modules in <code>neuronpulse/</code> built on native numeric, binary buffer, and profiling primitives (<code>math.sumprod</code>, <code>struct</code>, <code>bytearray</code>, <code>memoryview</code>, <code>tracemalloc</code>, <code>time.perf_counter</code>, <code>hashlib</code>) and <code>boto3</code>.
           </p>
         </div>
       </div>
@@ -1701,6 +1736,48 @@
             <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsBedrock"></div>
           </div>
         </div>
+
+        <!-- Module 5A -->
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>MODULE 05A · QUANTIZATION, MOE &amp; TP SHARDING</span>
+            <span style="color:#93C5FD;">neuronpulse/quant_spec_transport.py</span>
+          </div>
+          <div class="module-card-body">
+            <h3>SmoothQuant W8A8, 32-Group W4A16, Top-2 SwiGLU MoE &amp; TP=4</h3>
+            <div class="module-subbox">
+              <p>
+                SmoothQuant shifts activation outlier amplitude onto weights before integer rounding, while 32-group <code>W4A16</code> packs two signed 4-bit weights per byte alongside one FP16 scale per 32 weights. For sparse and distributed FFN blocks, online bias updates balance Top-2 <code>SwiGLU</code> experts and 4-rank sharding verifies exact <code>AllReduce</code> equivalence.
+              </p>
+            </div>
+            <ul class="module-list">
+              <li><strong>SmoothQuant <code>W8A8</code> &amp; Packed <code>W4A16</code>:</strong> Computes per-channel migration <code>s_j = max|X_j|^α / max|W_j|^(1-α)</code> (<code>α = 0.5</code>) into signed <code>int8</code> buffers (<code>4.0×</code> smaller than FP32) and packs 2 nibbles per byte with IEEE-754 binary16 scales via <code>struct.pack('&lt;e')</code> (<code>3.56×</code> smaller than FP16, <code>4.5</code> bits/weight).</li>
+              <li><strong>Load-Balanced Top-2 <code>SwiGLU</code> MoE + <code>TP=4</code>:</strong> Balances 8-expert routing to eliminate capacity token drops while executing <code>25.0%</code> active FFN weights per token, and verifies 4-rank <code>ColumnParallel + RowParallel + Ring AllReduce</code> parity.</li>
+            </ul>
+            <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsQuant"></div>
+          </div>
+        </div>
+
+        <!-- Module 5B -->
+        <div class="module-card">
+          <div class="module-card-head">
+            <span>MODULE 05B · SPECULATIVE DECODING, DP BUCKETS &amp; RING</span>
+            <span style="color:#93C5FD;">neuronpulse/quant_spec_transport.py</span>
+          </div>
+          <div class="module-card-body">
+            <h3>Lossless Speculative Decoding, Exact DP Bucketing &amp; SQ/CQ + MR Ring</h3>
+            <div class="module-subbox">
+              <p>
+                Rejection-sampled speculative decoding verifies <code>γ = 4</code> draft tokens in one target pass while preserving the exact target token distribution. Dynamic programming selects static AOT sequence buckets to minimize padding, BFD packing fills <code>2048</code>-token rows with block-diagonal masks, and a binary <code>SQ/CQ</code> ring pairs with an AVL interval-tree <code>MR</code> cache.
+              </p>
+            </div>
+            <ul class="module-list">
+              <li><strong>Speculative Decoding + DP AOT Buckets &amp; BFD Packing:</strong> Accepts draft tokens with probability <code>min(1, p/q)</code>, rolls back tentative KV slots on rejection, and resamples from <code>(p - q)+</code>; solves <code>DP[k][j]</code> for globally optimal static sequence buckets alongside Best-Fit-Decreasing bin packing.</li>
+              <li><strong>Binary <code>SQ/CQ</code> Ring &amp; AVL Interval-Tree <code>MR</code> Cache:</strong> Uses <code>memoryview</code> over pre-allocated <code>64 B</code> WQE / <code>32 B</code> CQE buffers with a 64-bit multipath SRD out-of-order bitmap, plus an <code>O(log N)</code> self-balancing AVL interval tree with <code>munmap</code> range invalidation.</li>
+            </ul>
+            <div style="margin-top:auto; padding-top:0.5rem; display:flex; gap:0.45rem; flex-wrap:wrap;" id="implTagsTransport"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1750,7 +1827,7 @@
             Each tab calls the Python 3.12 AWS Lambda backend (<code>/api/*</code>) and returns live <code>tracemalloc</code> heap bytes, <code>time.perf_counter()</code> latency, and IEEE-754 equivalence checks.
           </p>
         </div>
-        <span class="tag tag-pass" id="studioExecStatus">Ready · Initialized from Measured CPython 3.12.14 Snapshot</span>
+        <span class="tag tag-pass" id="studioExecStatus">Ready · Initialized from Measured Benchmark Snapshot</span>
       </div>
 
       <div class="tab-bar" role="tablist">
@@ -1773,6 +1850,11 @@
           <span class="tab-btn-eyebrow">Demo 04 · /api/correlator &amp; /api/bedrock</span>
           <span class="tab-btn-title">4. Isolate Faults &amp; Compare Bedrock</span>
           <span class="tab-btn-metric" id="tabMetricBedrock"></span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="tab-quantspec">
+          <span class="tab-btn-eyebrow">Demo 05 · /api/quant-spec &amp; /api/transport/ring</span>
+          <span class="tab-btn-title">5. Quantization, Spec-Decode &amp; Ring</span>
+          <span class="tab-btn-metric" id="tabMetricQuantSpec"></span>
         </button>
       </div>
 
@@ -2066,6 +2148,121 @@
           </div>
         </div>
       </div>
+
+      <!-- TAB 5: QUANTIZATION, SPECULATIVE DECODING, DP BUCKETS & TRANSPORT RING -->
+      <div class="tab-panel" id="tab-quantspec">
+        <div class="sandbox-howto">
+          <div class="sandbox-howto-steps">
+            <div><strong>1. Tune SmoothQuant &amp; Speculative Decoding:</strong> Adjust migration <code>alpha</code>, draft lookahead <code>gamma</code>, and max AOT buckets <code>K</code>, then click <strong>Execute Quantization, Spec-Decode &amp; DP Bucketing Live</strong>.</div>
+            <div><strong>2. Inspect Byte Compression &amp; Lossless Proof:</strong> Verify <code>4.0×</code> <code>W8A8</code> and <code>3.56×</code> <code>W4A16</code> byte compression, Top-2 <code>SwiGLU</code> MoE <code>0%</code> drop rate, and speculative marginal error <code>&lt; 1e-12</code>.</div>
+            <div><strong>3. Exercise SQ/CQ Ring &amp; MR Interval Tree:</strong> Adjust ring capacity or slab count on the right and click <strong>Execute Binary SQ/CQ Ring &amp; MR Cache Live</strong> to measure heap savings and <code>O(log N)</code> lookup speedup.</div>
+          </div>
+        </div>
+
+        <div class="grid-equal">
+          <!-- Left: Quantization, MoE, Speculative Decoding & DP AOT Buckets -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.45rem;">
+              <h3 style="font-size:1.06rem; font-weight:800;">Part A · Quantization, MoE, Spec-Decode &amp; DP Bucketing</h3>
+              <span class="tag tag-accent">POST /api/quant-spec</span>
+            </div>
+            <p style="font-size:0.86rem; color:var(--ink-muted); margin-bottom:0.95rem;">
+              Executes SmoothQuant <code>W8A8</code>, packed 32-group <code>W4A16</code>, Top-2 <code>SwiGLU</code> MoE + <code>TP=4</code> sharding, rejection-sampled speculative decoding, and Exact DP AOT sequence bucketing + BFD packing.
+            </p>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>SmoothQuant Migration Alpha (α)</span>
+                <span class="mono" id="qsAlphaVal">0.50</span>
+              </div>
+              <input type="range" id="qsAlpha" min="0.15" max="0.85" step="0.05" value="0.50" />
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Speculative Draft Lookahead (γ)</span>
+                <span class="mono" id="qsGammaVal">4 tokens</span>
+              </div>
+              <input type="range" id="qsGamma" min="2" max="6" step="1" value="4" />
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Draft-Target Logit Alignment</span>
+                <span class="mono" id="qsAlignVal">0.80</span>
+              </div>
+              <input type="range" id="qsAlign" min="0.55" max="0.90" step="0.05" value="0.80" />
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Compiled Static AOT Bucket Budget (K)</span>
+                <span class="mono" id="qsBucketsVal">5 buckets</span>
+              </div>
+              <input type="range" id="qsBuckets" min="2" max="7" step="1" value="5" />
+            </div>
+
+            <button type="button" class="btn btn-primary" id="runQuantSpecBtn" style="width:100%; justify-content:center; margin-bottom:0.95rem;">
+              ⚡ Execute Quantization, Spec-Decode &amp; DP Bucketing Live
+            </button>
+
+            <div id="qsVerdictBanner" class="verdict-banner verdict-pass"></div>
+            <div class="mini-kpi-grid" id="qsKpiGrid"></div>
+            <div class="bar-group" id="qsBars"></div>
+            <h4 style="font-size:0.88rem; font-weight:800; margin:0.9rem 0 0.45rem;">DP Static AOT Bucket Plan &amp; BFD Sequence Packing</h4>
+            <div class="table-wrap" id="qsBucketTableWrap"></div>
+          </div>
+
+          <!-- Right: Lock-Free SQ/CQ Binary Descriptor Ring & MR Interval-Tree Cache -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.45rem;">
+              <h3 style="font-size:1.06rem; font-weight:800;">Part B · Lock-Free SQ/CQ Ring &amp; MR Interval-Tree Cache</h3>
+              <span class="tag tag-purple">POST /api/transport/ring</span>
+            </div>
+            <p style="font-size:0.86rem; color:var(--ink-muted); margin-bottom:0.95rem;">
+              Steps fixed-slot <code>64 B</code> WQE and <code>32 B</code> CQE binary ring buffers through multipath SRD out-of-order completion tracking and benchmarks the Augmented AVL Interval-Tree <code>MR</code> pinning cache.
+            </p>
+
+            <div class="control-group">
+              <div class="control-label"><span>SQ / CQ Ring Slot Capacity</span></div>
+              <select id="trCapacity">
+                <option value="128">128 descriptor slots (12.0 KB ring)</option>
+                <option value="256" selected>256 descriptor slots (24.0 KB ring)</option>
+                <option value="512">512 descriptor slots (48.0 KB ring)</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Messages Posted &amp; Reaped</span>
+                <span class="mono" id="trMsgsVal">4096</span>
+              </div>
+              <input type="range" id="trMsgs" min="1024" max="8192" step="1024" value="4096" />
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Registered Virtual Tensor Slabs (N)</span>
+                <span class="mono" id="trRegionsVal">128 slabs</span>
+              </div>
+              <input type="range" id="trRegions" min="64" max="256" step="32" value="128" />
+            </div>
+
+            <button type="button" class="btn btn-obsidian" id="runTransportBtn" style="width:100%; justify-content:center; margin-bottom:0.95rem;">
+              ⚡ Execute Binary SQ/CQ Ring &amp; MR Cache Live
+            </button>
+
+            <div id="trVerdictBanner" class="verdict-banner verdict-pass"></div>
+            <div class="mini-kpi-grid" id="trKpiGrid"></div>
+            <div class="bar-group" id="trBars"></div>
+            <div class="code-header" style="margin-top:0.85rem;">
+              <span>SQ/CQ DESCRIPTOR STATE MACHINE &amp; AVL MR TELEMETRY</span>
+              <span id="trTreeTag"></span>
+            </div>
+            <pre class="code-box" id="trOutputBox" style="max-height:245px;"></pre>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- =================================================================== -->
@@ -2085,7 +2282,7 @@
           <span class="lens-kicker">Numerical Verification</span>
           <h4>IEEE-754 Equivalence &amp; Connection Warmup</h4>
           <p>
-            Every row compares the optimized algorithm against its baseline on identical inputs in the same CPython 3.12.14 process and verifies numerical agreement to 17 decimal places (<code>max_abs_diff ≤ 5.55 × 10⁻¹⁷</code>). For Amazon Bedrock, both models run back to back in <code>us-west-2</code> after a connection warmup call so TLS setup does not skew inference latency.
+            Every row compares the optimized algorithm against its baseline on identical inputs in the same CPython process and verifies numerical agreement to IEEE-754 precision. For Amazon Bedrock, both models run back to back in <code>us-west-2</code> after a connection warmup call so TLS setup does not skew inference latency.
           </p>
         </div>
         <div class="lens-box hood">
@@ -2114,10 +2311,10 @@
         <span>REPRODUCE BENCHMARKS LOCALLY</span>
         <span>benchmarks/run_benchmarks.py</span>
       </div>
-      <pre class="code-box"># 1. Run unit &amp; Lambda API integration tests
+      <pre class="code-box"># 1. Run all 10 unit &amp; Lambda API integration tests
 PYTHONPATH=. python3 -m unittest discover -s tests -v
 
-# 2. Run all four Python 3.12 benchmarks + live Amazon Bedrock (us-west-2)
+# 2. Run all five Python modules + live Amazon Bedrock (us-west-2)
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 AWS_PROFILE=portfolio AWS_DEFAULT_REGION=us-west-2 PYTHONPATH=. python3 -m benchmarks.run_benchmarks
 
@@ -2137,7 +2334,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
 
   <script>
     // Verbatim measured output from `benchmarks/latest_results.json`
-    const BENCHMARK_DATA = {"benchmark_suite":"neuronpulse-real-ml-systems-v2","measured_at_utc":"2026-11-25T05:54:30Z","environment":{"python_version":"3.12.14","platform":"macOS-26.6.2-arm64-arm-64bit","aws_region":"us-west-2","ec2_or_gpu_instances_used":0,"serverless_idle_cost_usd":0.0,"total_suite_wall_sec":22.524},"compiler_ir_eval":{"primary_stacked_2layer":{"preset":"stacked_2layer_mlp","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":8.55,"unoptimized_op_nodes":27,"optimized_op_nodes":10,"op_node_reduction_pct":63.0,"unoptimized_total_nodes":41,"optimized_total_nodes":23,"unoptimized_peak_bytes":7805608,"optimized_peak_bytes":951648,"peak_memory_saved_bytes":6853960,"peak_memory_saved_pct":87.8,"unoptimized_latency_ms":59.844,"optimized_latency_ms":31.109,"execution_speedup_x":1.92,"latency_reduction_pct":48.0,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":5,"op_nodes_after":21},{"pass":"DeadCodeElimination","pruned_op_nodes":7,"pruned_total_nodes":8,"op_nodes_after":14},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":2,"eliminated_intermediate_tensors":4,"op_nodes_after":10}],"unoptimized_ir":"graph @stacked_2layer_mlp {\n  %x: f64<64x64> = Input()\n  %ln1_gamma: f64<64> = Input()\n  %ln1_beta: f64<64> = Input()\n  %w_up1: f64<64x256> = Input()\n  %b_up1: f64<256> = Input()\n  %w_down1: f64<256x64> = Input()\n  %b_down1: f64<64> = Input()\n  %w_debug_probe: f64<64x256> = Input()\n  %c_half: f64<1> = Constant() [value=0.5]\n  %c_two: f64<1> = Constant() [value=2.0]\n  %c_unit_scale: f64<1> = Mul(%c_half, %c_two)\n  %c_probe_damp: f64<1> = Constant() [value=0.01]\n  %ln1_main: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %ln1_dup: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %mm_up1: f64<64x256> = MatMul(%ln1_main, %w_up1)\n  %mm_up1_dup: f64<64x256> = MatMul(%ln1_dup, %w_up1)\n  %bias_up1: f64<64x256> = AddBias(%mm_up1, %b_up1)\n  %act_up1: f64<64x256> = GELU(%bias_up1)\n  %debug_dup_bias: f64<64x256> = AddBias(%mm_up1_dup, %b_up1)\n  %debug_dup_act: f64<64x256> = GELU(%debug_dup_bias)\n  %debug_probe_mm: f64<64x256> = MatMul(%ln1_dup, %w_debug_probe)\n  %debug_probe_scaled: f64<64x256> = Mul(%debug_probe_mm, %c_probe_damp)\n  %mm_down1: f64<64x64> = MatMul(%act_up1, %w_down1)\n  %bias_down1: f64<64x64> = AddBias(%mm_down1, %b_down1)\n  %scaled_down1: f64<64x64> = Mul(%bias_down1, %c_unit_scale)\n  %res_out1: f64<64x64> = ResidualAdd(%x, %scaled_down1)\n  %ln2_gamma: f64<64> = Input()\n  %ln2_beta: f64<64> = Input()\n  %w_up2: f64<64x256> = Input()\n  %b_up2: f64<256> = Input()\n  %w_down2: f64<256x64> = Input()\n  %b_down2: f64<64> = Input()\n  %ln2_main: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %ln2_dup: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %debug_ln2_probe: f64<64x256> = MatMul(%ln2_dup, %w_debug_probe)\n  %mm_up2: f64<64x256> = MatMul(%ln2_main, %w_up2)\n  %bias_up2: f64<64x256> = AddBias(%mm_up2, %b_up2)\n  %act_up2: f64<64x256> = GELU(%bias_up2)\n  %mm_down2: f64<64x64> = MatMul(%act_up2, %w_down2)\n  %bias_down2: f64<64x64> = AddBias(%mm_down2, %b_down2)\n  %res_out2: f64<64x64> = ResidualAdd(%res_out1, %bias_down2)\n  return (%res_out2)\n}","optimized_ir":"graph @stacked_2layer_mlp_opt {\n  %x: f64<64x64> = Input()\n  %ln1_gamma: f64<64> = Input()\n  %ln1_beta: f64<64> = Input()\n  %w_up1: f64<64x256> = Input()\n  %b_up1: f64<256> = Input()\n  %w_down1: f64<256x64> = Input()\n  %b_down1: f64<64> = Input()\n  %ln1_main: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %act_up1: f64<64x256> = FusedMatMulBiasGelu(%ln1_main, %w_up1, %b_up1) [fused_ops=MatMul+AddBias+GELU]\n  %mm_down1: f64<64x64> = MatMul(%act_up1, %w_down1)\n  %bias_down1: f64<64x64> = AddBias(%mm_down1, %b_down1)\n  %res_out1: f64<64x64> = ResidualAdd(%x, %bias_down1)\n  %ln2_gamma: f64<64> = Input()\n  %ln2_beta: f64<64> = Input()\n  %w_up2: f64<64x256> = Input()\n  %b_up2: f64<256> = Input()\n  %w_down2: f64<256x64> = Input()\n  %b_down2: f64<64> = Input()\n  %ln2_main: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %act_up2: f64<64x256> = FusedMatMulBiasGelu(%ln2_main, %w_up2, %b_up2) [fused_ops=MatMul+AddBias+GELU]\n  %mm_down2: f64<64x64> = MatMul(%act_up2, %w_down2)\n  %bias_down2: f64<64x64> = AddBias(%mm_down2, %b_down2)\n  %res_out2: f64<64x64> = ResidualAdd(%res_out1, %bias_down2)\n  return (%res_out2)\n}","output_preview_row0":[-0.580518,0.233568,0.634926,0.626858,0.283932,-0.559519]},"presets":{"transformer_mlp_block":{"preset":"transformer_mlp_block","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":4.899,"unoptimized_op_nodes":18,"optimized_op_nodes":5,"op_node_reduction_pct":72.2,"unoptimized_total_nodes":26,"optimized_total_nodes":12,"unoptimized_peak_bytes":4991152,"optimized_peak_bytes":815864,"peak_memory_saved_bytes":4175288,"peak_memory_saved_pct":83.7,"unoptimized_latency_ms":34.443,"optimized_latency_ms":16.138,"execution_speedup_x":2.13,"latency_reduction_pct":53.1,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":4,"op_nodes_after":13},{"pass":"DeadCodeElimination","pruned_op_nodes":6,"pruned_total_nodes":7,"op_nodes_after":7},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":1,"eliminated_intermediate_tensors":2,"op_nodes_after":5}],"output_preview_row0":[-0.270843,0.17384,0.476824,0.340306,0.069781,-0.294417]},"stacked_2layer_mlp":{"preset":"stacked_2layer_mlp","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":8.55,"unoptimized_op_nodes":27,"optimized_op_nodes":10,"op_node_reduction_pct":63.0,"unoptimized_total_nodes":41,"optimized_total_nodes":23,"unoptimized_peak_bytes":7805608,"optimized_peak_bytes":951648,"peak_memory_saved_bytes":6853960,"peak_memory_saved_pct":87.8,"unoptimized_latency_ms":59.844,"optimized_latency_ms":31.109,"execution_speedup_x":1.92,"latency_reduction_pct":48.0,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":5,"op_nodes_after":21},{"pass":"DeadCodeElimination","pruned_op_nodes":7,"pruned_total_nodes":8,"op_nodes_after":14},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":2,"eliminated_intermediate_tensors":4,"op_nodes_after":10}],"output_preview_row0":[-0.580518,0.233568,0.634926,0.626858,0.283932,-0.559519]},"wide_ffn_epilogue":{"preset":"wide_ffn_epilogue","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":384},"compile_pass_wall_ms":7.217,"unoptimized_op_nodes":18,"optimized_op_nodes":5,"op_node_reduction_pct":72.2,"unoptimized_total_nodes":26,"optimized_total_nodes":12,"unoptimized_peak_bytes":7104688,"optimized_peak_bytes":1151768,"peak_memory_saved_bytes":5952920,"peak_memory_saved_pct":83.8,"unoptimized_latency_ms":50.456,"optimized_latency_ms":23.056,"execution_speedup_x":2.19,"latency_reduction_pct":54.3,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":4,"op_nodes_after":13},{"pass":"DeadCodeElimination","pruned_op_nodes":6,"pruned_total_nodes":7,"op_nodes_after":7},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":1,"eliminated_intermediate_tensors":2,"op_nodes_after":5}],"output_preview_row0":[-0.096944,-0.256443,0.255382,0.373246,0.250493,-0.418733]}}},"flash_attention_eval":{"primary_block32":{"head_dim":32,"block_size":32,"causal":false,"sweep":[{"seq_len":128,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":16384,"flash_tile_elements":1024,"tiles_evaluated":16,"tiles_skipped_causal":0,"naive_peak_bytes":1202184,"flash_peak_bytes":248608,"memory_saved_bytes":953576,"memory_reduction_pct":79.32,"memory_compression_x":4.84,"naive_wall_ms":9.754,"flash_wall_ms":10.825,"max_abs_diff":1.3877787807814457e-17,"numerically_exact":true,"sample_output_row0":[-0.016993,-0.016651,-0.011978,-0.01799,-0.001538,0.009961]},{"seq_len":256,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":65536,"flash_tile_elements":1024,"tiles_evaluated":64,"tiles_skipped_causal":0,"naive_peak_bytes":4548904,"flash_peak_bytes":447120,"memory_saved_bytes":4101784,"memory_reduction_pct":90.17,"memory_compression_x":10.17,"naive_wall_ms":38.521,"flash_wall_ms":42.619,"max_abs_diff":1.0408340855860843e-17,"numerically_exact":true,"sample_output_row0":[-0.005863,0.01392,-0.011032,0.000379,-0.00371,0.008889]},{"seq_len":512,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":262144,"flash_tile_elements":1024,"tiles_evaluated":256,"tiles_skipped_causal":0,"naive_peak_bytes":17451268,"flash_peak_bytes":840460,"memory_saved_bytes":16610808,"memory_reduction_pct":95.18,"memory_compression_x":20.76,"naive_wall_ms":153.497,"flash_wall_ms":171.543,"max_abs_diff":1.214306433183765e-17,"numerically_exact":true,"sample_output_row0":[-0.000216,0.003925,0.012266,0.00163,0.009782,-0.001189]}],"n512_summary":{"seq_len":512,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":262144,"flash_tile_elements":1024,"tiles_evaluated":256,"tiles_skipped_causal":0,"naive_peak_bytes":17451268,"flash_peak_bytes":840460,"memory_saved_bytes":16610808,"memory_reduction_pct":95.18,"memory_compression_x":20.76,"naive_wall_ms":153.497,"flash_wall_ms":171.543,"max_abs_diff":1.214306433183765e-17,"numerically_exact":true,"sample_output_row0":[-0.000216,0.003925,0.012266,0.00163,0.009782,-0.001189]},"scaling_proof":{"seq_len_ratio":"128 -> 512 (4x)","naive_memory_growth_x":14.52,"flash_memory_growth_x":3.38,"max_abs_diff_across_sweep":1.3877787807814457e-17}},"causal_block64":{"head_dim":32,"block_size":64,"causal":true,"sweep":[{"seq_len":128,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":16384,"flash_tile_elements":4096,"tiles_evaluated":3,"tiles_skipped_causal":1,"naive_peak_bytes":1007112,"flash_peak_bytes":296944,"memory_saved_bytes":710168,"memory_reduction_pct":70.52,"memory_compression_x":3.39,"naive_wall_ms":7.64,"flash_wall_ms":6.718,"max_abs_diff":5.551115123125783e-17,"numerically_exact":true,"sample_output_row0":[-0.191257,0.221677,0.069492,-0.114153,-0.088598,0.058344]},{"seq_len":256,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":65536,"flash_tile_elements":4096,"tiles_evaluated":10,"tiles_skipped_causal":6,"naive_peak_bytes":3765544,"flash_peak_bytes":493944,"memory_saved_bytes":3271600,"memory_reduction_pct":86.88,"memory_compression_x":7.62,"naive_wall_ms":30.099,"flash_wall_ms":22.376,"max_abs_diff":5.551115123125783e-17,"numerically_exact":true,"sample_output_row0":[0.036484,-0.179504,0.038215,0.065534,0.124169,0.017094]},{"seq_len":512,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":262144,"flash_tile_elements":4096,"tiles_evaluated":36,"tiles_skipped_causal":28,"naive_peak_bytes":14311684,"flash_peak_bytes":887564,"memory_saved_bytes":13424120,"memory_reduction_pct":93.8,"memory_compression_x":16.12,"naive_wall_ms":115.816,"flash_wall_ms":83.621,"max_abs_diff":2.7755575615628914e-17,"numerically_exact":true,"sample_output_row0":[-0.081314,-0.377581,0.027913,-0.184422,0.113249,-0.058128]}],"n512_summary":{"seq_len":512,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":262144,"flash_tile_elements":4096,"tiles_evaluated":36,"tiles_skipped_causal":28,"naive_peak_bytes":14311684,"flash_peak_bytes":887564,"memory_saved_bytes":13424120,"memory_reduction_pct":93.8,"memory_compression_x":16.12,"naive_wall_ms":115.816,"flash_wall_ms":83.621,"max_abs_diff":2.7755575615628914e-17,"numerically_exact":true,"sample_output_row0":[-0.081314,-0.377581,0.027913,-0.184422,0.113249,-0.058128]},"scaling_proof":{"seq_len_ratio":"128 -> 512 (4x)","naive_memory_growth_x":14.21,"flash_memory_growth_x":2.99,"max_abs_diff_across_sweep":5.551115123125783e-17}}},"paged_kv_eval":{"workload":{"num_requests":64,"min_seq_len":48,"max_seq_len":1024,"avg_seq_len":551.1,"system_prompt_tokens":256,"max_seq_len_reservation":1024,"block_size":16,"bytes_per_token_kv":49152},"contiguous_baseline":{"admitted_requests":64,"reserved_token_slots":65536,"used_token_slots":35272,"wasted_fragmentation_slots":30264,"allocated_bytes":3221225472,"wasted_bytes":1487536128,"internal_fragmentation_pct":46.18},"paged_cow_allocator":{"admitted_requests":64,"block_size":16,"physical_blocks_allocated":1288,"logical_blocks_mapped":2235,"shared_physical_blocks":16,"max_block_ref_count":64,"allocated_token_slots":20608,"used_physical_slots":20120,"wasted_tail_slots":488,"allocated_bytes":1012924416,"wasted_bytes":23986176,"internal_fragmentation_pct":2.37,"cow_prefix_hit_rate_pct":43.5,"prefix_cache_hits":947,"prefix_cache_lookups":2177,"cow_forks_executed":0},"comparison":{"memory_saved_bytes":2208301056,"memory_reduction_pct":68.55,"fragmentation_drop_pts":43.81,"memory_cap_mb":1280,"memory_cap_slots":27306,"contiguous_max_concurrent":26,"paged_max_concurrent":64,"concurrency_gain_x":2.46},"cow_isolation_check":{"cow_triggered":true,"shared_block_id":0,"shared_ref_before":64,"shared_ref_after":63,"new_private_block_id":1288,"mutated_token_pos":8,"target_request_id":"req-000","mutated_slot_verified":true,"peer_corruptions":0,"verified":true},"sample_block_tables":[{"request_id":"req-000","seq_len":752,"shared_prefix_tokens":256,"logical_blocks":47,"physical_block_ids_head":[1288,1,2,3,4,5]},{"request_id":"req-001","seq_len":355,"shared_prefix_tokens":256,"logical_blocks":23,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-002","seq_len":293,"shared_prefix_tokens":256,"logical_blocks":19,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-003","seq_len":417,"shared_prefix_tokens":256,"logical_blocks":27,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-004","seq_len":394,"shared_prefix_tokens":256,"logical_blocks":25,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-005","seq_len":563,"shared_prefix_tokens":256,"logical_blocks":36,"physical_block_ids_head":[0,1,2,3,4,5]}],"wall_clock_ms":14.241},"fault_correlator_eval":{"trials":48,"workers_per_trial":64,"total_raw_worker_alarms":3072,"isolated_root_incidents":48,"alert_compression_ratio":"64:1","alert_reduction_pct":98.44,"causal_correlator_correct":48,"causal_correlator_accuracy_pct":100.0,"arrival_order_correct":1,"arrival_order_accuracy_pct":2.1,"accuracy_gain_pts":97.9,"wall_clock_ms":3.743,"scenarios_available":[{"scenario_id":"oom_allocator_trap","title":"Worker Slab OOM Trap -> 63 Peer AllReduce Barrier Timeouts","root_subsystem":"WORKER_MEMORY_ALLOCATOR","root_code":"ERR_WORKER_SLAB_OOM_0x41","root_message":"Tensor arena allocation failed on rank; local worker execution halted before collective step.","symptom_subsystem":"COLLECTIVE_BARRIER_RING","symptom_code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","symptom_message":"Collective ring barrier timed out waiting on upstream peer rank.","propagation_delay_ns":1250000000,"recommended_remediation":"QUARANTINE_FAULTED_WORKER_AND_RESTORE_CHECKPOINT"},{"scenario_id":"rpc_socket_reset","title":"RPC Transport Connection Reset -> 63 Peer Step Straggler Alarms","root_subsystem":"RPC_SOCKET_TRANSPORT","root_code":"ERR_RPC_CONN_RESET_0x58","root_message":"Inter-worker RPC socket dropped with ECONNRESET during tensor shard exchange.","symptom_subsystem":"COLLECTIVE_BARRIER_RING","symptom_code":"WARN_COLLECTIVE_STRAGGLER_STALL","symptom_message":"Distributed step latency breached SLA waiting on unresponsive RPC peer.","propagation_delay_ns":640000000,"recommended_remediation":"DRAIN_BROKEN_TRANSPORT_WORKER_AND_REINIT_PROCESS_GROUP"},{"scenario_id":"kv_pool_exhaustion","title":"Paged KV Block Watermark Exhausted -> 63 Scheduler Backpressure Warnings","root_subsystem":"KV_BLOCK_POOL_MANAGER","root_code":"ERR_KV_FREE_BLOCKS_ZERO_0x33","root_message":"Free physical KV block list reached 0 blocks during burst prefill admission.","symptom_subsystem":"BATCH_DECODE_SCHEDULER","symptom_code":"WARN_DECODE_QUEUE_BACKPRESSURE","symptom_message":"Continuous batching scheduler preempted pending decode step due to KV pool pressure.","propagation_delay_ns":85000000,"recommended_remediation":"EVICT_IDLE_PREFIX_CACHE_OR_REDUCE_MAX_BATCH_TOKENS"}],"sample_trial":{"scenario":{"scenario_id":"oom_allocator_trap","title":"Worker Slab OOM Trap -> 63 Peer AllReduce Barrier Timeouts","expected_worker_id":"worker-05","expected_rank":5,"expected_code":"ERR_WORKER_SLAB_OOM_0x41"},"correlation":{"status":"ROOT_CAUSE_ISOLATED","raw_alert_count":64,"suppressed_symptom_count":63,"alert_compression_ratio":"64:1","cascade_window_ms":1250.94,"recommended_remediation":"QUARANTINE_FAULTED_WORKER_AND_RESTORE_CHECKPOINT","naive_first_arrival_pick":{"worker_id":"worker-23","rank":23,"code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","subsystem":"COLLECTIVE_BARRIER_RING"},"root_cause":{"worker_group":"worker-group-00","worker_id":"worker-05","rank":5,"subsystem":"WORKER_MEMORY_ALLOCATOR","code":"ERR_WORKER_SLAB_OOM_0x41","message":"Tensor arena allocation failed on rank; local worker execution halted before collective step."},"sample_suppressed_symptoms":[{"monotonic_ns":1764050001250345000,"worker_group":"worker-group-02","worker_id":"worker-23","rank":23,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250375000,"worker_group":"worker-group-03","worker_id":"worker-25","rank":25,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250105000,"worker_group":"worker-group-00","worker_id":"worker-07","rank":7,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250330000,"worker_group":"worker-group-02","worker_id":"worker-22","rank":22,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250675000,"worker_group":"worker-group-05","worker_id":"worker-45","rank":45,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."}],"wall_clock_ms":0.0495}}},"bedrock_serverless_eval":{"region":"us-west-2","prompts_evaluated_per_model":5,"total_suite_wall_ms":10962.9,"total_benchmark_cost_usd":0.000129,"nova_micro":{"model_id":"us.amazon.nova-micro-v1:0","label":"Amazon Nova Micro","region":"us-west-2","num_requests":5,"tls_warmup_ms":1172.33,"p50_wall_ms":612.09,"p95_wall_ms":787.0,"mean_wall_ms":654.94,"p50_bedrock_ms":356.0,"p95_bedrock_ms":455.4,"mean_bedrock_ms":373.4,"tokens_per_sec":125.33,"e2e_tokens_per_sec":71.46,"total_input_tokens":341,"total_output_tokens":234,"avg_input_tokens":68.2,"avg_output_tokens":46.8,"usd_per_1k_requests":0.00896,"actual_run_cost_usd":4.5e-05,"pricing_per_1m_tokens_usd":{"input":0.035,"output":0.14},"samples":[{"sample_index":1,"prompt_preview":"A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...","wall_clock_ms":553.41,"bedrock_latency_ms":299.0,"input_tokens":104,"output_tokens":34,"total_tokens":138,"server_tokens_per_sec":113.71,"e2e_tokens_per_sec":61.44,"request_cost_usd":8.4e-06,"response_text":"- Root cause: Memory allocation failure (OOM) on worker-19.\n- Immediate recovery: Restart worker-19 and increase memory allocation for distributed training."},{"sample_index":2,"prompt_preview":"Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...","wall_clock_ms":612.09,"bedrock_latency_ms":356.0,"input_tokens":59,"output_tokens":50,"total_tokens":109,"server_tokens_per_sec":140.45,"e2e_tokens_per_sec":81.69,"request_cost_usd":9.1e-06,"response_text":"Online-softmax block-tiled FlashAttention computes softmax scores incrementally, using tiled matrix operations to avoid materializing the full O(N^2) score matrix, ensuring numerical equivalence to standard softmax attention while significantly reducing memory usage."},{"sample_index":3,"prompt_preview":"Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...","wall_clock_ms":803.34,"bedrock_latency_ms":421.0,"input_tokens":72,"output_tokens":56,"total_tokens":128,"server_tokens_per_sec":133.02,"e2e_tokens_per_sec":69.71,"request_cost_usd":1.04e-05,"response_text":"- Block-size-16 Paged KV-Cache allocates fixed-size blocks, minimizing unused space per request, thus reducing internal fragmentation.  \n- Copy-on-Write ensures cache updates don't fragment memory, allowing efficient block reuse across concurrent requests."},{"sample_index":4,"prompt_preview":"In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...","wall_clock_ms":584.24,"bedrock_latency_ms":327.0,"input_tokens":56,"output_tokens":43,"total_tokens":99,"server_tokens_per_sec":131.5,"e2e_tokens_per_sec":73.6,"request_cost_usd":8e-06,"response_text":"Fusing MatMul + AddBias + GELU reduces peak intermediate memory allocation by eliminating the need for separate memory accesses for each operation, thus consolidating computations into a single kernel execution, minimizing temporary storage requirements."},{"sample_index":5,"prompt_preview":"Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...","wall_clock_ms":721.62,"bedrock_latency_ms":464.0,"input_tokens":50,"output_tokens":51,"total_tokens":101,"server_tokens_per_sec":109.91,"e2e_tokens_per_sec":70.67,"request_cost_usd":8.9e-06,"response_text":"1. Latency-optimized micro models deliver faster inference speeds for high QPS but may lack feature richness.  \n2. Multimodal-capable lite models support richer feature extraction but typically incur higher latency, suitable for lower QPS scenarios."}]},"nova_lite":{"model_id":"us.amazon.nova-lite-v1:0","label":"Amazon Nova Lite","region":"us-west-2","num_requests":5,"tls_warmup_ms":590.64,"p50_wall_ms":921.8,"p95_wall_ms":1175.5,"mean_wall_ms":986.89,"p50_bedrock_ms":668.0,"p95_bedrock_ms":904.6,"mean_bedrock_ms":724.4,"tokens_per_sec":72.89,"e2e_tokens_per_sec":53.5,"total_input_tokens":341,"total_output_tokens":264,"avg_input_tokens":68.2,"avg_output_tokens":52.8,"usd_per_1k_requests":0.01676,"actual_run_cost_usd":8.4e-05,"pricing_per_1m_tokens_usd":{"input":0.06,"output":0.24},"samples":[{"sample_index":1,"prompt_preview":"A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...","wall_clock_ms":1198.0,"bedrock_latency_ms":926.0,"input_tokens":104,"output_tokens":42,"total_tokens":146,"server_tokens_per_sec":45.36,"e2e_tokens_per_sec":35.06,"request_cost_usd":1.63e-05,"response_text":"- Root cause: Worker-19 ran out of memory, causing a barrier timeout for the collective operation.\n- Immediate action: Increase memory allocation for workers or reduce batch size to prevent OOM errors."},{"sample_index":2,"prompt_preview":"Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...","wall_clock_ms":880.01,"bedrock_latency_ms":618.0,"input_tokens":59,"output_tokens":56,"total_tokens":115,"server_tokens_per_sec":90.61,"e2e_tokens_per_sec":63.64,"request_cost_usd":1.7e-05,"response_text":"Online-softmax block-tiled FlashAttention avoids materializing the O(N^2) score matrix by processing queries and keys in blocks, reducing memory usage. It remains numerically identical to standard softmax attention by ensuring the softmax operation is accurately computed within each block."},{"sample_index":3,"prompt_preview":"Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...","wall_clock_ms":1085.48,"bedrock_latency_ms":819.0,"input_tokens":72,"output_tokens":61,"total_tokens":133,"server_tokens_per_sec":74.48,"e2e_tokens_per_sec":56.2,"request_cost_usd":1.9e-05,"response_text":"- Each LLM request uses 4 tokens, totaling 256 tokens for 64 requests.\n- Block-size-16 Paged KV-Cache with Copy-on-Write ensures contiguous memory allocation, minimizing unused space (internal fragmentation) by efficiently reusing memory blocks."},{"sample_index":4,"prompt_preview":"In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...","wall_clock_ms":849.18,"bedrock_latency_ms":591.0,"input_tokens":56,"output_tokens":39,"total_tokens":95,"server_tokens_per_sec":65.99,"e2e_tokens_per_sec":45.93,"request_cost_usd":1.27e-05,"response_text":"Fusing MatMul + AddBias + GELU into a single kernel eliminates intermediate data storage, reducing memory allocation. This avoids the need for temporary arrays, optimizing memory usage and improving performance."},{"sample_index":5,"prompt_preview":"Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...","wall_clock_ms":921.8,"bedrock_latency_ms":668.0,"input_tokens":50,"output_tokens":66,"total_tokens":116,"server_tokens_per_sec":98.8,"e2e_tokens_per_sec":71.6,"request_cost_usd":1.88e-05,"response_text":"- **Latency-optimized micro models**: Lower latency, faster response times, ideal for high-QPS environments, but limited in handling complex, multimodal data.\n- **Multimodal-capable lite models**: Handles diverse data types, better suited for nuanced incident analysis, but may introduce higher latency compared to micro models."}]},"head_to_head":{"micro_vs_lite_p50_speedup_x":1.88,"micro_vs_lite_tok_s_ratio_x":1.72,"micro_cost_savings_vs_lite_pct":46.5}}};
+    const BENCHMARK_DATA = {"benchmark_suite":"neuronpulse-real-ml-systems-v2.1","measured_at_utc":"2026-11-25T23:11:48Z","environment":{"python_version":"3.14.6","platform":"macOS-26.6.2-arm64-arm-64bit-Mach-O","aws_region":"us-west-2","ec2_or_gpu_instances_used":0,"serverless_idle_cost_usd":0.0,"total_suite_wall_sec":17.141},"compiler_ir_eval":{"primary_stacked_2layer":{"preset":"stacked_2layer_mlp","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":4.915,"unoptimized_op_nodes":27,"optimized_op_nodes":10,"op_node_reduction_pct":63.0,"unoptimized_total_nodes":41,"optimized_total_nodes":23,"unoptimized_peak_bytes":7806120,"optimized_peak_bytes":954136,"peak_memory_saved_bytes":6851984,"peak_memory_saved_pct":87.8,"unoptimized_latency_ms":38.78,"optimized_latency_ms":22.185,"execution_speedup_x":1.75,"latency_reduction_pct":42.8,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":5,"op_nodes_after":21},{"pass":"DeadCodeElimination","pruned_op_nodes":7,"pruned_total_nodes":8,"op_nodes_after":14},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":2,"eliminated_intermediate_tensors":4,"op_nodes_after":10}],"unoptimized_ir":"graph @stacked_2layer_mlp {\n  %x: f64<64x64> = Input()\n  %ln1_gamma: f64<64> = Input()\n  %ln1_beta: f64<64> = Input()\n  %w_up1: f64<64x256> = Input()\n  %b_up1: f64<256> = Input()\n  %w_down1: f64<256x64> = Input()\n  %b_down1: f64<64> = Input()\n  %w_debug_probe: f64<64x256> = Input()\n  %c_half: f64<1> = Constant() [value=0.5]\n  %c_two: f64<1> = Constant() [value=2.0]\n  %c_unit_scale: f64<1> = Mul(%c_half, %c_two)\n  %c_probe_damp: f64<1> = Constant() [value=0.01]\n  %ln1_main: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %ln1_dup: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %mm_up1: f64<64x256> = MatMul(%ln1_main, %w_up1)\n  %mm_up1_dup: f64<64x256> = MatMul(%ln1_dup, %w_up1)\n  %bias_up1: f64<64x256> = AddBias(%mm_up1, %b_up1)\n  %act_up1: f64<64x256> = GELU(%bias_up1)\n  %debug_dup_bias: f64<64x256> = AddBias(%mm_up1_dup, %b_up1)\n  %debug_dup_act: f64<64x256> = GELU(%debug_dup_bias)\n  %debug_probe_mm: f64<64x256> = MatMul(%ln1_dup, %w_debug_probe)\n  %debug_probe_scaled: f64<64x256> = Mul(%debug_probe_mm, %c_probe_damp)\n  %mm_down1: f64<64x64> = MatMul(%act_up1, %w_down1)\n  %bias_down1: f64<64x64> = AddBias(%mm_down1, %b_down1)\n  %scaled_down1: f64<64x64> = Mul(%bias_down1, %c_unit_scale)\n  %res_out1: f64<64x64> = ResidualAdd(%x, %scaled_down1)\n  %ln2_gamma: f64<64> = Input()\n  %ln2_beta: f64<64> = Input()\n  %w_up2: f64<64x256> = Input()\n  %b_up2: f64<256> = Input()\n  %w_down2: f64<256x64> = Input()\n  %b_down2: f64<64> = Input()\n  %ln2_main: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %ln2_dup: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %debug_ln2_probe: f64<64x256> = MatMul(%ln2_dup, %w_debug_probe)\n  %mm_up2: f64<64x256> = MatMul(%ln2_main, %w_up2)\n  %bias_up2: f64<64x256> = AddBias(%mm_up2, %b_up2)\n  %act_up2: f64<64x256> = GELU(%bias_up2)\n  %mm_down2: f64<64x64> = MatMul(%act_up2, %w_down2)\n  %bias_down2: f64<64x64> = AddBias(%mm_down2, %b_down2)\n  %res_out2: f64<64x64> = ResidualAdd(%res_out1, %bias_down2)\n  return (%res_out2)\n}","optimized_ir":"graph @stacked_2layer_mlp_opt {\n  %x: f64<64x64> = Input()\n  %ln1_gamma: f64<64> = Input()\n  %ln1_beta: f64<64> = Input()\n  %w_up1: f64<64x256> = Input()\n  %b_up1: f64<256> = Input()\n  %w_down1: f64<256x64> = Input()\n  %b_down1: f64<64> = Input()\n  %ln1_main: f64<64x64> = LayerNorm(%x, %ln1_gamma, %ln1_beta) [eps=1e-05]\n  %act_up1: f64<64x256> = FusedMatMulBiasGelu(%ln1_main, %w_up1, %b_up1) [fused_ops=MatMul+AddBias+GELU]\n  %mm_down1: f64<64x64> = MatMul(%act_up1, %w_down1)\n  %bias_down1: f64<64x64> = AddBias(%mm_down1, %b_down1)\n  %res_out1: f64<64x64> = ResidualAdd(%x, %bias_down1)\n  %ln2_gamma: f64<64> = Input()\n  %ln2_beta: f64<64> = Input()\n  %w_up2: f64<64x256> = Input()\n  %b_up2: f64<256> = Input()\n  %w_down2: f64<256x64> = Input()\n  %b_down2: f64<64> = Input()\n  %ln2_main: f64<64x64> = LayerNorm(%res_out1, %ln2_gamma, %ln2_beta) [eps=1e-05]\n  %act_up2: f64<64x256> = FusedMatMulBiasGelu(%ln2_main, %w_up2, %b_up2) [fused_ops=MatMul+AddBias+GELU]\n  %mm_down2: f64<64x64> = MatMul(%act_up2, %w_down2)\n  %bias_down2: f64<64x64> = AddBias(%mm_down2, %b_down2)\n  %res_out2: f64<64x64> = ResidualAdd(%res_out1, %bias_down2)\n  return (%res_out2)\n}","output_preview_row0":[-0.580518,0.233568,0.634926,0.626858,0.283932,-0.559519]},"presets":{"transformer_mlp_block":{"preset":"transformer_mlp_block","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":2.892,"unoptimized_op_nodes":18,"optimized_op_nodes":5,"op_node_reduction_pct":72.2,"unoptimized_total_nodes":26,"optimized_total_nodes":12,"unoptimized_peak_bytes":4991664,"optimized_peak_bytes":818352,"peak_memory_saved_bytes":4173312,"peak_memory_saved_pct":83.6,"unoptimized_latency_ms":23.513,"optimized_latency_ms":11.527,"execution_speedup_x":2.04,"latency_reduction_pct":51.0,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":4,"op_nodes_after":13},{"pass":"DeadCodeElimination","pruned_op_nodes":6,"pruned_total_nodes":7,"op_nodes_after":7},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":1,"eliminated_intermediate_tensors":2,"op_nodes_after":5}],"output_preview_row0":[-0.270843,0.17384,0.476824,0.340306,0.069781,-0.294417]},"stacked_2layer_mlp":{"preset":"stacked_2layer_mlp","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":256},"compile_pass_wall_ms":4.915,"unoptimized_op_nodes":27,"optimized_op_nodes":10,"op_node_reduction_pct":63.0,"unoptimized_total_nodes":41,"optimized_total_nodes":23,"unoptimized_peak_bytes":7806120,"optimized_peak_bytes":954136,"peak_memory_saved_bytes":6851984,"peak_memory_saved_pct":87.8,"unoptimized_latency_ms":38.78,"optimized_latency_ms":22.185,"execution_speedup_x":1.75,"latency_reduction_pct":42.8,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":5,"op_nodes_after":21},{"pass":"DeadCodeElimination","pruned_op_nodes":7,"pruned_total_nodes":8,"op_nodes_after":14},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":2,"eliminated_intermediate_tensors":4,"op_nodes_after":10}],"output_preview_row0":[-0.580518,0.233568,0.634926,0.626858,0.283932,-0.559519]},"wide_ffn_epilogue":{"preset":"wide_ffn_epilogue","dimensions":{"batch_tokens":64,"hidden_dim":64,"ffn_dim":384},"compile_pass_wall_ms":4.272,"unoptimized_op_nodes":18,"optimized_op_nodes":5,"op_node_reduction_pct":72.2,"unoptimized_total_nodes":26,"optimized_total_nodes":12,"unoptimized_peak_bytes":7105296,"optimized_peak_bytes":1155280,"peak_memory_saved_bytes":5950016,"peak_memory_saved_pct":83.7,"unoptimized_latency_ms":35.117,"optimized_latency_ms":16.452,"execution_speedup_x":2.13,"latency_reduction_pct":53.2,"max_abs_diff":0.0,"numerically_equivalent":true,"pass_trace":[{"pass":"ConstantFold + CSE","folded_constants":2,"cse_eliminated":4,"op_nodes_after":13},{"pass":"DeadCodeElimination","pruned_op_nodes":6,"pruned_total_nodes":7,"op_nodes_after":7},{"pass":"MatMulBiasGeluFusion","fused_epilogue_chains":1,"eliminated_intermediate_tensors":2,"op_nodes_after":5}],"output_preview_row0":[-0.096944,-0.256443,0.255382,0.373246,0.250493,-0.418733]}}},"flash_attention_eval":{"primary_block32":{"head_dim":32,"block_size":32,"causal":false,"sweep":[{"seq_len":128,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":16384,"flash_tile_elements":1024,"tiles_evaluated":16,"tiles_skipped_causal":0,"naive_peak_bytes":1202872,"flash_peak_bytes":249552,"memory_saved_bytes":953320,"memory_reduction_pct":79.25,"memory_compression_x":4.82,"naive_wall_ms":6.604,"flash_wall_ms":7.462,"max_abs_diff":1.3877787807814457e-17,"numerically_exact":true,"sample_output_row0":[-0.016993,-0.016651,-0.011978,-0.01799,-0.001538,0.009961]},{"seq_len":256,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":65536,"flash_tile_elements":1024,"tiles_evaluated":64,"tiles_skipped_causal":0,"naive_peak_bytes":4549592,"flash_peak_bytes":448064,"memory_saved_bytes":4101528,"memory_reduction_pct":90.15,"memory_compression_x":10.15,"naive_wall_ms":26.198,"flash_wall_ms":29.648,"max_abs_diff":1.0408340855860843e-17,"numerically_exact":true,"sample_output_row0":[-0.005863,0.01392,-0.011032,0.000379,-0.00371,0.008889]},{"seq_len":512,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":262144,"flash_tile_elements":1024,"tiles_evaluated":256,"tiles_skipped_causal":0,"naive_peak_bytes":17452024,"flash_peak_bytes":841504,"memory_saved_bytes":16610520,"memory_reduction_pct":95.18,"memory_compression_x":20.74,"naive_wall_ms":101.986,"flash_wall_ms":118.893,"max_abs_diff":1.214306433183765e-17,"numerically_exact":true,"sample_output_row0":[-0.000216,0.003925,0.012266,0.00163,0.009782,-0.001189]}],"n512_summary":{"seq_len":512,"head_dim":32,"block_size":32,"causal":false,"naive_score_elements":262144,"flash_tile_elements":1024,"tiles_evaluated":256,"tiles_skipped_causal":0,"naive_peak_bytes":17452024,"flash_peak_bytes":841504,"memory_saved_bytes":16610520,"memory_reduction_pct":95.18,"memory_compression_x":20.74,"naive_wall_ms":101.986,"flash_wall_ms":118.893,"max_abs_diff":1.214306433183765e-17,"numerically_exact":true,"sample_output_row0":[-0.000216,0.003925,0.012266,0.00163,0.009782,-0.001189]},"scaling_proof":{"seq_len_ratio":"128 -> 512 (4x)","naive_memory_growth_x":14.51,"flash_memory_growth_x":3.37,"max_abs_diff_across_sweep":1.3877787807814457e-17}},"causal_block64":{"head_dim":32,"block_size":64,"causal":true,"sweep":[{"seq_len":128,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":16384,"flash_tile_elements":4096,"tiles_evaluated":3,"tiles_skipped_causal":1,"naive_peak_bytes":1007800,"flash_peak_bytes":297888,"memory_saved_bytes":709912,"memory_reduction_pct":70.44,"memory_compression_x":3.38,"naive_wall_ms":4.862,"flash_wall_ms":4.216,"max_abs_diff":5.551115123125783e-17,"numerically_exact":true,"sample_output_row0":[-0.191257,0.221677,0.069492,-0.114153,-0.088598,0.058344]},{"seq_len":256,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":65536,"flash_tile_elements":4096,"tiles_evaluated":10,"tiles_skipped_causal":6,"naive_peak_bytes":3766232,"flash_peak_bytes":494888,"memory_saved_bytes":3271344,"memory_reduction_pct":86.86,"memory_compression_x":7.61,"naive_wall_ms":18.306,"flash_wall_ms":14.975,"max_abs_diff":5.551115123125783e-17,"numerically_exact":true,"sample_output_row0":[0.036484,-0.179504,0.038215,0.065534,0.124169,0.017094]},{"seq_len":512,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":262144,"flash_tile_elements":4096,"tiles_evaluated":36,"tiles_skipped_causal":28,"naive_peak_bytes":14312440,"flash_peak_bytes":888608,"memory_saved_bytes":13423832,"memory_reduction_pct":93.79,"memory_compression_x":16.11,"naive_wall_ms":80.177,"flash_wall_ms":60.827,"max_abs_diff":2.7755575615628914e-17,"numerically_exact":true,"sample_output_row0":[-0.081314,-0.377581,0.027913,-0.184422,0.113249,-0.058128]}],"n512_summary":{"seq_len":512,"head_dim":32,"block_size":64,"causal":true,"naive_score_elements":262144,"flash_tile_elements":4096,"tiles_evaluated":36,"tiles_skipped_causal":28,"naive_peak_bytes":14312440,"flash_peak_bytes":888608,"memory_saved_bytes":13423832,"memory_reduction_pct":93.79,"memory_compression_x":16.11,"naive_wall_ms":80.177,"flash_wall_ms":60.827,"max_abs_diff":2.7755575615628914e-17,"numerically_exact":true,"sample_output_row0":[-0.081314,-0.377581,0.027913,-0.184422,0.113249,-0.058128]},"scaling_proof":{"seq_len_ratio":"128 -> 512 (4x)","naive_memory_growth_x":14.2,"flash_memory_growth_x":2.98,"max_abs_diff_across_sweep":5.551115123125783e-17}}},"paged_kv_eval":{"workload":{"num_requests":64,"min_seq_len":48,"max_seq_len":1024,"avg_seq_len":551.1,"system_prompt_tokens":256,"max_seq_len_reservation":1024,"block_size":16,"bytes_per_token_kv":49152},"contiguous_baseline":{"admitted_requests":64,"reserved_token_slots":65536,"used_token_slots":35272,"wasted_fragmentation_slots":30264,"allocated_bytes":3221225472,"wasted_bytes":1487536128,"internal_fragmentation_pct":46.18},"paged_cow_allocator":{"admitted_requests":64,"block_size":16,"physical_blocks_allocated":1288,"logical_blocks_mapped":2235,"shared_physical_blocks":16,"max_block_ref_count":64,"allocated_token_slots":20608,"used_physical_slots":20120,"wasted_tail_slots":488,"allocated_bytes":1012924416,"wasted_bytes":23986176,"internal_fragmentation_pct":2.37,"cow_prefix_hit_rate_pct":43.5,"prefix_cache_hits":947,"prefix_cache_lookups":2177,"cow_forks_executed":0},"comparison":{"memory_saved_bytes":2208301056,"memory_reduction_pct":68.55,"fragmentation_drop_pts":43.81,"memory_cap_mb":1280,"memory_cap_slots":27306,"contiguous_max_concurrent":26,"paged_max_concurrent":64,"concurrency_gain_x":2.46},"cow_isolation_check":{"cow_triggered":true,"shared_block_id":0,"shared_ref_before":64,"shared_ref_after":63,"new_private_block_id":1288,"mutated_token_pos":8,"target_request_id":"req-000","mutated_slot_verified":true,"peer_corruptions":0,"verified":true},"sample_block_tables":[{"request_id":"req-000","seq_len":752,"shared_prefix_tokens":256,"logical_blocks":47,"physical_block_ids_head":[1288,1,2,3,4,5]},{"request_id":"req-001","seq_len":355,"shared_prefix_tokens":256,"logical_blocks":23,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-002","seq_len":293,"shared_prefix_tokens":256,"logical_blocks":19,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-003","seq_len":417,"shared_prefix_tokens":256,"logical_blocks":27,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-004","seq_len":394,"shared_prefix_tokens":256,"logical_blocks":25,"physical_block_ids_head":[0,1,2,3,4,5]},{"request_id":"req-005","seq_len":563,"shared_prefix_tokens":256,"logical_blocks":36,"physical_block_ids_head":[0,1,2,3,4,5]}],"wall_clock_ms":9.72},"quant_spec_eval":{"quantization_and_moe":{"dimensions":{"batch_tokens":48,"in_features":128,"out_features":256,"total_weights":32768,"outlier_channels":[3,7,29,60,66,117],"outlier_scale":18.0},"footprint_bytes":{"fp32_weight_bytes":131072,"fp16_weight_bytes":65536,"w8a8_int8_weight_bytes":32768,"w8a8_with_scales_bytes":33536,"w4a16_packed_nibble_bytes":16384,"w4a16_fp16_scale_bytes":2048,"w4a16_total_bytes":18432,"w8a8_compression_vs_fp32_x":4.0,"w4a16_compression_vs_fp16_x":3.56,"w4a16_compression_vs_fp32_x":7.11,"w4a16_effective_bits_per_weight":4.5},"naive_w8a8":{"cosine_similarity":0.998465,"sqnr_db":25.13,"max_abs_logit_error":0.120571,"mean_abs_logit_error":0.019784},"smoothquant_w8a8":{"alpha":0.5,"max_migration_scale":17.614,"cosine_similarity":0.999956,"sqnr_db":40.59,"max_abs_logit_error":0.025264,"mean_abs_logit_error":0.003463,"sqnr_gain_over_naive_db":15.46,"max_error_reduction_x":4.77},"group_w4a16":{"group_size":32,"num_groups":1024,"cosine_similarity":0.995348,"sqnr_db":20.26,"max_abs_logit_error":0.182056,"mean_abs_logit_error":0.036229},"moe_swiglu":{"num_tokens":128,"hidden_dim":64,"expert_ffn_dim":128,"num_experts":8,"top_k":2,"active_expert_fraction_pct":25.0,"expert_capacity":40,"unbalanced_router":{"expert_token_counts":[40,40,0,0,0,1,0,0],"dropped_assignments":175,"drop_rate_pct":68.36,"load_cv":1.704,"aux_balance_loss":0.7257,"sample_output_row0":[]},"balanced_router":{"expert_token_counts":[35,37,33,30,32,29,33,27],"dropped_assignments":0,"drop_rate_pct":0.0,"load_cv":0.095,"aux_balance_loss":1.002,"sample_output_row0":[0.061464,0.007746,0.044656,0.027104,-0.129799,-0.084163]},"tp_sharding_verification":{"tp_degree":4,"per_rank_ffn_shard_dim":32,"per_rank_weight_reduction_x":4.0,"allreduce_elements_per_token":64,"max_abs_diff":2.7755575615628914e-17,"numerically_equivalent":true}},"wall_clock_ms":166.101},"speculative_decoding":{"gamma":4,"vocab_size":48,"draft_alignment":0.8,"emitted_tokens":256,"autoregressive_target_steps_baseline":256,"speculative_target_forward_steps":84,"tokens_per_target_step_x":3.05,"target_forward_steps_saved_pct":67.2,"draft_tokens_proposed":336,"draft_tokens_accepted":172,"draft_acceptance_rate_pct":51.19,"all_accepted_bonus_tokens":25,"kv_rollback_events":59,"kv_rolled_back_slots":164,"kv_final_consistent_slots":258,"exact_marginal_max_abs_diff":1.1102230246251565e-16,"lossless_distribution_preserved":true,"monte_carlo_tvd_speculative":0.0312,"monte_carlo_tvd_unverified_draft":0.3286,"step_trace_head":[{"target_step":1,"draft_proposed":[30,20,1,41],"accepted_draft_count":2,"emitted_tokens":[30,20,25],"kv_rolled_back":2},{"target_step":2,"draft_proposed":[39,42,34,30],"accepted_draft_count":4,"emitted_tokens":[39,42,34,30,27],"kv_rolled_back":0},{"target_step":3,"draft_proposed":[33,3,47,28],"accepted_draft_count":0,"emitted_tokens":[11],"kv_rolled_back":4},{"target_step":4,"draft_proposed":[8,38,36,33],"accepted_draft_count":1,"emitted_tokens":[8,3],"kv_rolled_back":3},{"target_step":5,"draft_proposed":[15,11,7,45],"accepted_draft_count":2,"emitted_tokens":[15,11,35],"kv_rolled_back":2},{"target_step":6,"draft_proposed":[35,2,46,31],"accepted_draft_count":4,"emitted_tokens":[35,2,46,31,25],"kv_rolled_back":0}],"wall_clock_ms":7.064},"aot_bucketing_and_packing":{"num_sequences":256,"max_seq_len":2048,"avg_seq_len":532.7,"single_static_bucket":{"buckets":[2048],"num_buckets":1,"real_tokens":136379,"compiled_slot_tokens":524288,"padding_waste_tokens":387909,"padding_waste_pct":73.99,"compute_utilization_pct":26.01,"bucket_request_counts":{"2048":256}},"pow2_static_buckets":{"buckets":[128,256,512,1024,2048],"num_buckets":5,"real_tokens":136379,"compiled_slot_tokens":192512,"padding_waste_tokens":56133,"padding_waste_pct":29.16,"compute_utilization_pct":70.84,"bucket_request_counts":{"128":50,"256":55,"512":56,"1024":50,"2048":45}},"dp_optimal_buckets":{"buckets":[256,512,768,1536,2048],"num_buckets":5,"real_tokens":136379,"compiled_slot_tokens":178176,"padding_waste_tokens":41797,"padding_waste_pct":23.46,"compute_utilization_pct":76.54,"bucket_request_counts":{"256":105,"512":56,"768":43,"1536":33,"2048":19},"verified_global_optimum":true},"padding_reduction_vs_single_pct":89.23,"bfd_sequence_packing":{"num_sequences":256,"max_pack_len":2048,"unpacked_bins":256,"bfd_packed_bins":67,"bin_reduction_x":3.82,"unpacked_padding_waste_pct":73.99,"bfd_padding_waste_pct":0.61,"bfd_token_utilization_pct":99.39,"sample_packed_bins":[[2048],[1996,51],[1982,65],[1952,96]],"sample_position_id_reset":[0,1,2,3,4,5,6,0,1,2,3,4,5,6,7,8,0,1,2,3,4,5],"cross_doc_attention_leakage":0.0,"block_diagonal_max_abs_diff":0.0,"zero_cross_doc_leakage_verified":true},"wall_clock_ms":13.653},"suite_wall_ms":187.618},"transport_ring_eval":{"sq_cq_ring":{"ring_capacity":256,"wqe_bytes":64,"cqe_bytes":32,"preallocated_ring_bytes":24576,"messages_processed":4096,"reaped_completions":4096,"transferred_payload_bytes":16777216,"descriptor_state_transitions":16384,"srd_ooo_reordered_packets":1408,"final_sq_occupancy":0,"final_cq_occupancy":0,"steady_state_heap_alloc_bytes":1068,"naive_queue_heap_alloc_bytes":25824,"heap_alloc_reduction_pct":95.86,"ring_wall_ms":4.421,"naive_queue_wall_ms":1.404,"ring_us_per_msg":1.079},"mr_interval_cache":{"registered_slabs_in_tree":213,"avl_tree_height":8,"avl_height_upper_bound":12,"avl_balanced_verified":true,"avg_tree_comparisons_per_lookup":5.97,"lookups_evaluated":1024,"tensor_slab_bytes":1048576,"cache_hits":940,"cache_misses":86,"cache_hit_rate_pct":91.62,"cached_lookup_wall_ms":2.144,"cold_page_pin_wall_ms":13.198,"cold_pages_walked":131072,"mr_cache_speedup_x":6.16,"cached_us_per_lookup":2.094,"cold_us_per_lookup":12.889,"invalidation_safety_check":{"hit_before_invalidate":true,"evicted_overlapping_mrs":1,"hit_immediately_after_invalidate":false,"fresh_lkey_issued":true,"verified":true},"page_checksum_guard":47104}},"fault_correlator_eval":{"trials":48,"workers_per_trial":64,"total_raw_worker_alarms":3072,"isolated_root_incidents":48,"alert_compression_ratio":"64:1","alert_reduction_pct":98.44,"causal_correlator_correct":48,"causal_correlator_accuracy_pct":100.0,"arrival_order_correct":1,"arrival_order_accuracy_pct":2.1,"accuracy_gain_pts":97.9,"wall_clock_ms":2.966,"scenarios_available":[{"scenario_id":"oom_allocator_trap","title":"Worker Slab OOM Trap -> 63 Peer AllReduce Barrier Timeouts","root_subsystem":"WORKER_MEMORY_ALLOCATOR","root_code":"ERR_WORKER_SLAB_OOM_0x41","root_message":"Tensor arena allocation failed on rank; local worker execution halted before collective step.","symptom_subsystem":"COLLECTIVE_BARRIER_RING","symptom_code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","symptom_message":"Collective ring barrier timed out waiting on upstream peer rank.","propagation_delay_ns":1250000000,"recommended_remediation":"QUARANTINE_FAULTED_WORKER_AND_RESTORE_CHECKPOINT"},{"scenario_id":"rpc_socket_reset","title":"RPC Transport Connection Reset -> 63 Peer Step Straggler Alarms","root_subsystem":"RPC_SOCKET_TRANSPORT","root_code":"ERR_RPC_CONN_RESET_0x58","root_message":"Inter-worker RPC socket dropped with ECONNRESET during tensor shard exchange.","symptom_subsystem":"COLLECTIVE_BARRIER_RING","symptom_code":"WARN_COLLECTIVE_STRAGGLER_STALL","symptom_message":"Distributed step latency breached SLA waiting on unresponsive RPC peer.","propagation_delay_ns":640000000,"recommended_remediation":"DRAIN_BROKEN_TRANSPORT_WORKER_AND_REINIT_PROCESS_GROUP"},{"scenario_id":"kv_pool_exhaustion","title":"Paged KV Block Watermark Exhausted -> 63 Scheduler Backpressure Warnings","root_subsystem":"KV_BLOCK_POOL_MANAGER","root_code":"ERR_KV_FREE_BLOCKS_ZERO_0x33","root_message":"Free physical KV block list reached 0 blocks during burst prefill admission.","symptom_subsystem":"BATCH_DECODE_SCHEDULER","symptom_code":"WARN_DECODE_QUEUE_BACKPRESSURE","symptom_message":"Continuous batching scheduler preempted pending decode step due to KV pool pressure.","propagation_delay_ns":85000000,"recommended_remediation":"EVICT_IDLE_PREFIX_CACHE_OR_REDUCE_MAX_BATCH_TOKENS"}],"sample_trial":{"scenario":{"scenario_id":"oom_allocator_trap","title":"Worker Slab OOM Trap -> 63 Peer AllReduce Barrier Timeouts","expected_worker_id":"worker-05","expected_rank":5,"expected_code":"ERR_WORKER_SLAB_OOM_0x41"},"correlation":{"status":"ROOT_CAUSE_ISOLATED","raw_alert_count":64,"suppressed_symptom_count":63,"alert_compression_ratio":"64:1","cascade_window_ms":1250.94,"recommended_remediation":"QUARANTINE_FAULTED_WORKER_AND_RESTORE_CHECKPOINT","naive_first_arrival_pick":{"worker_id":"worker-23","rank":23,"code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","subsystem":"COLLECTIVE_BARRIER_RING"},"root_cause":{"worker_group":"worker-group-00","worker_id":"worker-05","rank":5,"subsystem":"WORKER_MEMORY_ALLOCATOR","code":"ERR_WORKER_SLAB_OOM_0x41","message":"Tensor arena allocation failed on rank; local worker execution halted before collective step."},"sample_suppressed_symptoms":[{"monotonic_ns":1764050001250345000,"worker_group":"worker-group-02","worker_id":"worker-23","rank":23,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250375000,"worker_group":"worker-group-03","worker_id":"worker-25","rank":25,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250105000,"worker_group":"worker-group-00","worker_id":"worker-07","rank":7,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250330000,"worker_group":"worker-group-02","worker_id":"worker-22","rank":22,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."},{"monotonic_ns":1764050001250675000,"worker_group":"worker-group-05","worker_id":"worker-45","rank":45,"subsystem":"COLLECTIVE_BARRIER_RING","severity":"WARN","code":"ERR_ALLREDUCE_BARRIER_TIMEOUT","message":"Collective ring barrier timed out waiting on upstream peer rank."}],"wall_clock_ms":0.0385}}},"bedrock_serverless_eval":{"region":"us-west-2","prompts_evaluated_per_model":5,"total_suite_wall_ms":10306.3,"total_benchmark_cost_usd":0.000132,"nova_micro":{"model_id":"us.amazon.nova-micro-v1:0","label":"Amazon Nova Micro","region":"us-west-2","num_requests":5,"tls_warmup_ms":1031.39,"p50_wall_ms":737.01,"p95_wall_ms":832.54,"mean_wall_ms":749.33,"p50_bedrock_ms":474.0,"p95_bedrock_ms":577.2,"mean_bedrock_ms":473.6,"tokens_per_sec":98.82,"e2e_tokens_per_sec":62.46,"total_input_tokens":341,"total_output_tokens":234,"avg_input_tokens":68.2,"avg_output_tokens":46.8,"usd_per_1k_requests":0.00892,"actual_run_cost_usd":4.5e-05,"pricing_per_1m_tokens_usd":{"input":0.035,"output":0.14},"samples":[{"sample_index":1,"prompt_preview":"A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...","wall_clock_ms":854.85,"bedrock_latency_ms":599.0,"input_tokens":104,"output_tokens":50,"total_tokens":154,"server_tokens_per_sec":83.47,"e2e_tokens_per_sec":58.49,"request_cost_usd":1.06e-05,"response_text":"- Root cause: Memory allocation failure (OOM) on worker-19 causing all-reduce timeouts.\n- Immediate action: Isolate and restart worker-19; increase memory allocation or reduce batch size to prevent future OOMs."},{"sample_index":2,"prompt_preview":"Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...","wall_clock_ms":731.53,"bedrock_latency_ms":474.0,"input_tokens":59,"output_tokens":49,"total_tokens":108,"server_tokens_per_sec":103.38,"e2e_tokens_per_sec":66.98,"request_cost_usd":8.9e-06,"response_text":"Online-softmax block-tiled FlashAttention computes attention scores incrementally, using a tiled approach to avoid materializing the full O(N^2) score matrix, while maintaining numerical equivalence through careful partitioning and recomputation of intermediate results."},{"sample_index":3,"prompt_preview":"Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...","wall_clock_ms":743.3,"bedrock_latency_ms":490.0,"input_tokens":72,"output_tokens":54,"total_tokens":126,"server_tokens_per_sec":110.2,"e2e_tokens_per_sec":72.65,"request_cost_usd":1.01e-05,"response_text":"1. Block-size-16 Paged KV-Cache allocates 16-token blocks, minimizing unused space per request.  \n2. Copy-on-Write avoids redundant data copies, optimizing cache usage and reducing fragmentation from concurrent updates."},{"sample_index":4,"prompt_preview":"In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...","wall_clock_ms":737.01,"bedrock_latency_ms":391.0,"input_tokens":56,"output_tokens":37,"total_tokens":93,"server_tokens_per_sec":94.63,"e2e_tokens_per_sec":50.2,"request_cost_usd":7.1e-06,"response_text":"Fusing MatMul + AddBias + GELU reduces peak intermediate memory allocation by minimizing the number of separate tensors created, thus lowering memory overhead and improving cache efficiency during computation."},{"sample_index":5,"prompt_preview":"Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...","wall_clock_ms":679.95,"bedrock_latency_ms":414.0,"input_tokens":50,"output_tokens":44,"total_tokens":94,"server_tokens_per_sec":106.28,"e2e_tokens_per_sec":64.71,"request_cost_usd":7.9e-06,"response_text":"1. Latency-optimized micro models deliver lower response times but may lack feature richness. 2. Multimodal-capable lite models support diverse data types but typically incur higher latency due to complex processing."}]},"nova_lite":{"model_id":"us.amazon.nova-lite-v1:0","label":"Amazon Nova Lite","region":"us-west-2","num_requests":5,"tls_warmup_ms":539.23,"p50_wall_ms":905.32,"p95_wall_ms":1054.5,"mean_wall_ms":923.02,"p50_bedrock_ms":651.0,"p95_bedrock_ms":798.8,"mean_bedrock_ms":666.8,"tokens_per_sec":82.48,"e2e_tokens_per_sec":59.59,"total_input_tokens":341,"total_output_tokens":275,"avg_input_tokens":68.2,"avg_output_tokens":55.0,"usd_per_1k_requests":0.0173,"actual_run_cost_usd":8.7e-05,"pricing_per_1m_tokens_usd":{"input":0.06,"output":0.24},"samples":[{"sample_index":1,"prompt_preview":"A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...","wall_clock_ms":989.8,"bedrock_latency_ms":734.0,"input_tokens":104,"output_tokens":44,"total_tokens":148,"server_tokens_per_sec":59.95,"e2e_tokens_per_sec":44.45,"request_cost_usd":1.68e-05,"response_text":"- **Root Cause:** Worker-19 ran out of memory, causing a barrier timeout for the collective operation.\n- **Immediate Action:** Increase memory allocation for workers or reduce batch size to fit within available memory."},{"sample_index":2,"prompt_preview":"Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...","wall_clock_ms":880.38,"bedrock_latency_ms":620.0,"input_tokens":59,"output_tokens":58,"total_tokens":117,"server_tokens_per_sec":93.55,"e2e_tokens_per_sec":65.88,"request_cost_usd":1.75e-05,"response_text":"Online-softmax block-tiled FlashAttention avoids materializing the O(N^2) score matrix by processing queries and keys in blocks, reducing memory usage. It remains numerically identical to standard softmax attention by ensuring the softmax operation is accurately computed on the same attention scores."},{"sample_index":3,"prompt_preview":"Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...","wall_clock_ms":905.32,"bedrock_latency_ms":651.0,"input_tokens":72,"output_tokens":66,"total_tokens":138,"server_tokens_per_sec":101.38,"e2e_tokens_per_sec":72.9,"request_cost_usd":2.02e-05,"response_text":"- Each LLM request uses 4 tokens, totaling 256 tokens for 64 requests.\n- Block-size-16 Paged KV-Cache with Copy-on-Write ensures each block is 16 tokens, minimizing unused space by reusing blocks across requests, thus reducing internal fragmentation."},{"sample_index":4,"prompt_preview":"In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...","wall_clock_ms":768.9,"bedrock_latency_ms":514.0,"input_tokens":56,"output_tokens":41,"total_tokens":97,"server_tokens_per_sec":79.77,"e2e_tokens_per_sec":53.32,"request_cost_usd":1.32e-05,"response_text":"Fusing MatMul, AddBias, and GELU into a single kernel avoids intermediate data storage, minimizing peak memory usage. This contiguous processing reduces the need for temporary memory allocations, optimizing memory efficiency."},{"sample_index":5,"prompt_preview":"Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...","wall_clock_ms":1070.68,"bedrock_latency_ms":815.0,"input_tokens":50,"output_tokens":66,"total_tokens":116,"server_tokens_per_sec":80.98,"e2e_tokens_per_sec":61.64,"request_cost_usd":1.88e-05,"response_text":"- **Latency-optimized micro models**: Lower latency, faster response times, ideal for high-QPS environments, but limited in handling complex, multimodal data.\n- **Multimodal-capable lite models**: Handles diverse data types, better for nuanced incident analysis, but may have higher latency, impacting QPS performance."}]},"head_to_head":{"micro_vs_lite_p50_speedup_x":1.37,"micro_vs_lite_tok_s_ratio_x":1.2,"micro_cost_savings_vs_lite_pct":48.4}}};
 
     function fmtBytes(bytes) {
       if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + ' GB';
@@ -2227,15 +2424,17 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     const c2Init = BENCHMARK_DATA.compiler_ir_eval.primary_stacked_2layer;
     const faInit = BENCHMARK_DATA.flash_attention_eval.primary_block32.n512_summary;
     const kvInit = BENCHMARK_DATA.paged_kv_eval;
+    const qsInit = BENCHMARK_DATA.quant_spec_eval;
+    const trInit = BENCHMARK_DATA.transport_ring_eval;
     const corrInit = BENCHMARK_DATA.fault_correlator_eval;
     const brInit = BENCHMARK_DATA.bedrock_serverless_eval;
 
     const ARCH_NODE_DETAILS = {
       'edge-browser': {
         plane: 'Plane ① · AWS Serverless Edge & Compute',
-        title: 'Browser Studio (4 Interactive Sandboxes & Stateless Hash Sync)',
+        title: 'Browser Studio (5 Interactive Sandboxes & Stateless Hash Sync)',
         module: 'web/index.html',
-        summary: 'Renders the 6-section technical console, interactive multi-plane architecture inspector, worked examples, and 4 live ML systems sandboxes. Stores theme and section state strictly in location.hash with zero Web Storage.',
+        summary: 'Renders the 6-section technical console, interactive multi-plane architecture inspector, worked examples, and 5 live ML systems sandboxes. Stores theme and section state strictly in location.hash with zero Web Storage.',
         metric: '0 External JS Frameworks · 0 Web Storage'
       },
       'edge-cloudfront': {
@@ -2256,7 +2455,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         plane: 'Plane ① · AWS Serverless Edge & Compute',
         title: '256 MB Python 3.12 AWS Lambda Origin (neuronpulse-api-origin)',
         module: 'neuronpulse/server.py :: lambda_handler & route_api_request',
-        summary: 'Executes /api/health, /api/state, /api/compiler/optimize, /api/attention/run, /api/kvcache/run, /api/correlator/run, and /api/bedrock/compare live on every request and returns real measured wall_clock_ms and tracemalloc peak_bytes.',
+        summary: 'Executes /api/health, /api/state, /api/compiler/optimize, /api/attention/run, /api/kvcache/run, /api/quant-spec, /api/transport/ring, /api/correlator/run, and /api/bedrock/compare live on every request.',
         metric: '256 MB Python 3.12 · 0 EC2 / 0 GPU Instances'
       },
       'compiler-ir': {
@@ -2274,14 +2473,21 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         metric: `-${faInit.memory_reduction_pct}% Peak Memory @ N=${faInit.seq_len} (${faInit.memory_compression_x}×) · max_abs_diff = ${fmtExp(faInit.max_abs_diff)}`
       },
       'paged-kv': {
-        plane: 'Plane ③ · Serving KV-Cache & Distributed Telemetry',
+        plane: 'Plane ③ · Paged KV, Quant/SpecDec/Ring & Worker Telemetry',
         title: 'Paged KV-Cache Block Allocator + SHA-256 Prefix CoW',
         module: 'neuronpulse/paged_kv.py :: PagedKVBlockAllocator',
         summary: 'Maps 64 variable-length multi-turn requests (48..1024 tokens) onto fixed 16-token physical blocks, shares the 256-token system prompt via chained SHA-256 hashes, and forks private blocks on Copy-on-Write mutation.',
         metric: `Frag ${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}% · -${kvInit.comparison.memory_reduction_pct}% Memory · ${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent} Admitted`
       },
+      'quant-spec-transport': {
+        plane: 'Plane ③ · Paged KV, Quant/SpecDec/Ring & Worker Telemetry',
+        title: 'SmoothQuant W8A8 / W4A16, Speculative Decoding, DP Buckets & SQ/CQ + MR Ring',
+        module: 'neuronpulse/quant_spec_transport.py :: run_quant_spec_suite & run_transport_ring_mr_benchmark',
+        summary: 'Executes SmoothQuant W8A8 (4.0× vs FP32) and 32-group W4A16 (3.56× vs FP16), Top-2 SwiGLU MoE + TP=4 sharding, rejection-sampled speculative decoding, Exact DP static AOT sequence bucketing + BFD packing, and a 64B WQE SQ/CQ binary ring with an AVL interval-tree MR pinning cache.',
+        metric: `W8A8 ${qsInit.quantization_and_moe.footprint_bytes.w8a8_compression_vs_fp32_x}× · W4A16 ${qsInit.quantization_and_moe.footprint_bytes.w4a16_compression_vs_fp16_x}× · Spec ${qsInit.speculative_decoding.tokens_per_target_step_x}× · MR ${trInit.mr_interval_cache.mr_cache_speedup_x}×`
+      },
       'fault-correlator': {
-        plane: 'Plane ③ · Serving KV-Cache & Distributed Telemetry',
+        plane: 'Plane ③ · Paged KV, Quant/SpecDec/Ring & Worker Telemetry',
         title: 'Distributed Worker Causal Fault Correlator',
         module: 'neuronpulse/correlator.py :: CrossNodeErrorCorrelator',
         summary: 'Separates root-worker OOM, RPC socket reset, and KV watermark faults from 63× downstream collective barrier timeouts across shuffled out-of-order collector streams.',
@@ -2305,8 +2511,8 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         plane: 'Plane ④ · Live Serverless Bedrock Inference & Benchmarks',
         title: 'Reproducible Benchmark & Unit Verification Suite',
         module: 'benchmarks/run_benchmarks.py & tests/test_neuronpulse.py',
-        summary: 'Executes all four Python 3.12 engines plus live AWS Bedrock profiling in ~22.5s for $0.000129 total API cost and writes verbatim measured results to benchmarks/latest_results.json.',
-        metric: `CPython ${BENCHMARK_DATA.environment.python_version} · $${brInit.total_benchmark_cost_usd} Run Cost · 6/6 Tests Passing`
+        summary: 'Executes all five Python modules plus live AWS Bedrock profiling for $0.000132 total API cost and writes verbatim measured results to benchmarks/latest_results.json.',
+        metric: `CPython ${BENCHMARK_DATA.environment.python_version} · $${brInit.total_benchmark_cost_usd} Run Cost · 10/10 Tests Passing`
       }
     };
 
@@ -2379,20 +2585,29 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
     // =========================================================================
     function hydrateStaticFromBenchmarks() {
       const faSweep = BENCHMARK_DATA.flash_attention_eval.primary_block32.scaling_proof;
+      const qm = qsInit.quantization_and_moe;
+      const sd = qsInit.speculative_decoding;
+      const ab = qsInit.aot_bucketing_and_packing;
+      const bfd = ab.bfd_sequence_packing;
+      const sq = trInit.sq_cq_ring;
+      const mrc = trInit.mr_interval_cache;
+
+      document.getElementById('studioExecStatus').textContent =
+        `Ready · Initialized from Measured CPython ${BENCHMARK_DATA.environment.python_version} Snapshot`;
 
       document.getElementById('s1HoodSummary').innerHTML =
-        `Across our CPython <code>${escHtml(BENCHMARK_DATA.environment.python_version)}</code> verification run: (1) SSA fusion + liveness cuts intermediate tensor heap from <code>${fmtBytes(c2Init.unoptimized_peak_bytes)} → ${fmtBytes(c2Init.optimized_peak_bytes)}</code> (<strong>-${c2Init.peak_memory_saved_pct}%</strong>); (2) online-softmax tiling reduces <code>O(N²)</code> working memory to <code>O(B_r·B_c + B_r·d)</code>, saving <strong>-${faInit.memory_reduction_pct}%</strong> at <code>N=${faInit.seq_len}</code> (<code>${faInit.memory_compression_x}×</code>); (3) 16-token Paged KV + SHA-256 CoW drops internal fragmentation from <code>${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}%</code>; and (4) live <code>us-west-2</code> Bedrock profiling shows Nova Micro achieving <code>${brInit.nova_micro.p50_bedrock_ms}ms</code> p50 at <code>$${brInit.nova_micro.usd_per_1k_requests}/1k</code> requests.`;
+        `Across our CPython <code>${escHtml(BENCHMARK_DATA.environment.python_version)}</code> verification run: (1) SSA fusion + liveness cuts intermediate tensor heap from <code>${fmtBytes(c2Init.unoptimized_peak_bytes)} → ${fmtBytes(c2Init.optimized_peak_bytes)}</code> (<strong>-${c2Init.peak_memory_saved_pct}%</strong>); (2) online-softmax tiling saves <strong>-${faInit.memory_reduction_pct}%</strong> at <code>N=${faInit.seq_len}</code> (<code>${faInit.memory_compression_x}×</code>); (3) 16-token Paged KV + CoW drops fragmentation from <code>${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}%</code>; (4) SmoothQuant <code>W8A8</code> (<strong>${qm.footprint_bytes.w8a8_compression_vs_fp32_x}×</strong> vs FP32, <code>+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB</code>) &amp; 32-group <code>W4A16</code> (<strong>${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</strong> vs FP16) pair with <strong>${sd.tokens_per_target_step_x}×</strong> lossless speculative decoding and <strong>${mrc.mr_cache_speedup_x}×</strong> AVL MR caching; and (5) live <code>us-west-2</code> Bedrock profiling shows Nova Micro at <code>${brInit.nova_micro.p50_bedrock_ms}ms</code> p50 (<code>$${brInit.nova_micro.usd_per_1k_requests}/1k</code>).`;
 
       document.getElementById('workedExampleGrid').innerHTML = `
         <div class="worked-stage-card">
           <div>
-            <span class="step-badge">STAGE 01 · GRAPH COMPILER</span>
-            <h4>Fuse the 2-Layer MLP Block</h4>
+            <span class="step-badge">STAGE 01 · COMPILER &amp; QUANT</span>
+            <h4>Fuse MLP &amp; Pack W8A8 / W4A16</h4>
             <p>
-              Input batch <code>X (64×64)</code> enters the 2-layer Pre-LN MLP (<code>64→256→64</code>). CSE merges duplicate <code>LayerNorm</code> nodes, DCE strips dead debug probes, and <code>MatMul+AddBias+GELU</code> fuses into 1 kernel.
+              CSE, DCE, and <code>MatMul+AddBias+GELU</code> fusion cut peak activation buffers while SmoothQuant <code>W8A8</code> and 32-group <code>W4A16</code> compress linear weights and balance Top-2 <code>SwiGLU</code> MoE routing.
             </p>
           </div>
-          <div class="worked-stage-metric">${c2Init.unoptimized_op_nodes} → ${c2Init.optimized_op_nodes} ops · ${fmtBytes(c2Init.unoptimized_peak_bytes)} → ${fmtBytes(c2Init.optimized_peak_bytes)} (-${c2Init.peak_memory_saved_pct}%)</div>
+          <div class="worked-stage-metric">-${c2Init.peak_memory_saved_pct}% act mem · W8A8 ${qm.footprint_bytes.w8a8_compression_vs_fp32_x}× · W4A16 ${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</div>
         </div>
         <div class="worked-stage-card">
           <div>
@@ -2406,46 +2621,46 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         </div>
         <div class="worked-stage-card">
           <div>
-            <span class="step-badge">STAGE 03 · PAGED KV + COW</span>
-            <h4>Share 256-Token System Prompt</h4>
+            <span class="step-badge">STAGE 03 · KV, SPEC-DEC &amp; AOT</span>
+            <h4>Page KV, Spec-Decode &amp; Bucket</h4>
             <p>
-              Across <code>64</code> concurrent chats (<code>48..1024</code> tokens), all full system-prompt chunks map to <code>16</code> shared physical blocks (<code>ref_count = 64</code>); unique turns page 16-token blocks on demand.
+              <code>64</code> chats share <code>16</code> system-prompt KV blocks, rejection sampling emits <code>${sd.tokens_per_target_step_x}×</code> tokens per target step, and DP static bucketing + BFD packing cut pad waste.
             </p>
           </div>
-          <div class="worked-stage-metric">Frag ${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}% · ${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent} admitted</div>
+          <div class="worked-stage-metric">${sd.tokens_per_target_step_x}× tok/step · DP pad ${ab.dp_optimal_buckets.padding_waste_pct}% · BFD pad ${bfd.bfd_padding_waste_pct}%</div>
         </div>
         <div class="worked-stage-card">
           <div>
-            <span class="step-badge">STAGE 04 · TRIAGE &amp; BEDROCK</span>
-            <h4>Isolate Fault &amp; Route Model</h4>
+            <span class="step-badge">STAGE 04 · RING, TRIAGE &amp; NOVA</span>
+            <h4>SQ/CQ Ring, MR Cache &amp; Bedrock</h4>
             <p>
-              When 1 worker OOM triggers 63 peer barrier timeouts, causal sorting isolates the single root rank in <code>${corrInit.wall_clock_ms} ms</code> and routes text triage to <code>nova-micro</code> over <code>nova-lite</code>.
+              Pre-allocated <code>64 B</code> WQE rings and AVL <code>MR</code> caching cut transport overhead, while causal sorting isolates root worker faults in <code>${corrInit.wall_clock_ms} ms</code> and profiles Bedrock Nova tiers.
             </p>
           </div>
-          <div class="worked-stage-metric">100.0% root accuracy · ${brInit.nova_micro.p50_bedrock_ms}ms vs ${brInit.nova_lite.p50_bedrock_ms}ms (-${brInit.head_to_head.micro_cost_savings_vs_lite_pct}% cost)</div>
+          <div class="worked-stage-metric">MR ${mrc.mr_cache_speedup_x}× · 100.0% root · ${brInit.nova_micro.p50_bedrock_ms}ms vs ${brInit.nova_lite.p50_bedrock_ms}ms</div>
         </div>
       `;
 
       document.getElementById('heroKpiStrip').innerHTML = `
         <div class="card kpi-card">
-          <div class="kpi-val">-${c2Init.peak_memory_saved_pct}%</div>
-          <div class="kpi-label">Less Graph Memory</div>
-          <div class="kpi-sub">Fusing layer operations shrinks peak tensor RAM from ${fmtBytes(c2Init.unoptimized_peak_bytes)} to ${fmtBytes(c2Init.optimized_peak_bytes)} (${c2Init.execution_speedup_x}× faster)</div>
+          <div class="kpi-val">-${c2Init.peak_memory_saved_pct}% / -${faInit.memory_reduction_pct}%</div>
+          <div class="kpi-label">Graph &amp; Attention Heap Saved</div>
+          <div class="kpi-sub">SSA fusion (${c2Init.execution_speedup_x}× faster) + ${faInit.block_size}×${faInit.block_size} tiled FlashAttention (${faInit.memory_compression_x}× compression @ N=${faInit.seq_len})</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-val">-${faInit.memory_reduction_pct}%</div>
-          <div class="kpi-label">Less Attention Memory</div>
-          <div class="kpi-sub">Streaming ${faInit.seq_len}-token attention in ${faInit.block_size}×${faInit.block_size} tiles cuts working RAM from ${fmtBytes(faInit.naive_peak_bytes)} to ${fmtBytes(faInit.flash_peak_bytes)}</div>
+          <div class="kpi-val">${qm.footprint_bytes.w8a8_compression_vs_fp32_x}× / ${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</div>
+          <div class="kpi-label">SmoothQuant W8A8 &amp; 32g W4A16</div>
+          <div class="kpi-sub">cos ${qm.smoothquant_w8a8.cosine_similarity} (+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB vs naive W8A8) · Top-2 SwiGLU MoE 0% drops · TP=4 diff ${fmtExp(qm.moe_swiglu.tp_sharding_verification.max_abs_diff)}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-val">${kvInit.comparison.concurrency_gain_x}×</div>
-          <div class="kpi-label">More Concurrent Chats</div>
-          <div class="kpi-sub">Paging 16-token cache blocks cuts waste from ${kvInit.contiguous_baseline.internal_fragmentation_pct}% to ${kvInit.paged_cow_allocator.internal_fragmentation_pct}% (${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent} chats in ${kvInit.comparison.memory_cap_mb} MB)</div>
+          <div class="kpi-val">${sd.tokens_per_target_step_x}× · ${kvInit.comparison.concurrency_gain_x}×</div>
+          <div class="kpi-label">Spec-Decode &amp; Paged KV Gain</div>
+          <div class="kpi-sub">Lossless rejection sampling (-${sd.target_forward_steps_saved_pct}% target steps) · DP AOT pad ${ab.single_static_bucket.padding_waste_pct}%→${ab.dp_optimal_buckets.padding_waste_pct}% · BFD ${bfd.bfd_padding_waste_pct}%</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-val">${brInit.nova_micro.p50_bedrock_ms} ms</div>
-          <div class="kpi-label">Bedrock Nova Micro Latency</div>
-          <div class="kpi-sub">${brInit.head_to_head.micro_vs_lite_p50_speedup_x}× faster median latency and ${brInit.head_to_head.micro_cost_savings_vs_lite_pct}% lower cost than Nova Lite, with ${corrInit.causal_correlator_accuracy_pct}% fault isolation</div>
+          <div class="kpi-val">${mrc.mr_cache_speedup_x}× · ${brInit.nova_micro.p50_bedrock_ms}ms</div>
+          <div class="kpi-label">MR Interval Cache &amp; Nova Micro</div>
+          <div class="kpi-sub">64B SQ/CQ ring (-${sq.heap_alloc_reduction_pct}% dyn heap, ${mrc.cache_hit_rate_pct}% MR hit) · Bedrock Nova Micro -${brInit.head_to_head.micro_cost_savings_vs_lite_pct}% cost vs Lite</div>
         </div>
       `;
 
@@ -2455,6 +2670,10 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         `Materialized N=512 Attention: ${faInit.naive_score_elements.toLocaleString()} score cells · ${fmtBytes(faInit.naive_peak_bytes)} peak heap`;
       document.getElementById('probStatKv').textContent =
         `Contiguous max_seq_len=1024: ${kvInit.contiguous_baseline.internal_fragmentation_pct}% internal fragmentation · ${kvInit.comparison.contiguous_max_concurrent}/64 admitted @ ${kvInit.comparison.memory_cap_mb} MB`;
+      document.getElementById('probStatQuantSpec').textContent =
+        `Naive W8A8 Max Err ${qm.naive_w8a8.max_abs_logit_error} · Skewed MoE ${qm.moe_swiglu.unbalanced_router.drop_rate_pct}% drops · Single [2048] AOT ${ab.single_static_bucket.padding_waste_pct}% pad waste`;
+      document.getElementById('probStatTransport').textContent =
+        `Naive Dict Queue: ${sq.naive_queue_heap_alloc_bytes.toLocaleString()} B dyn heap · Cold 4 KiB Page Walk: ${mrc.cold_page_pin_wall_ms} ms (${mrc.cold_pages_walked.toLocaleString()} pages)`;
       document.getElementById('probStatCorrelator').textContent =
         `Shuffled Arrival Heuristic: ${corrInit.arrival_order_accuracy_pct}% root accuracy (${corrInit.arrival_order_correct}/${corrInit.trials}) across ${corrInit.total_raw_worker_alarms.toLocaleString()} alarms`;
 
@@ -2474,6 +2693,14 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         <span class="tag tag-pass">${brInit.head_to_head.micro_vs_lite_p50_speedup_x}× Faster p50 (Micro vs Lite)</span>
         <span class="tag tag-purple">$${brInit.total_benchmark_cost_usd} Full Suite Cost</span>
       `;
+      document.getElementById('implTagsQuant').innerHTML = `
+        <span class="tag tag-pass">W8A8 ${qm.footprint_bytes.w8a8_compression_vs_fp32_x}× · W4A16 ${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</span>
+        <span class="tag tag-accent">+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB SQNR · TP=4 diff ${fmtExp(qm.moe_swiglu.tp_sharding_verification.max_abs_diff)}</span>
+      `;
+      document.getElementById('implTagsTransport').innerHTML = `
+        <span class="tag tag-pass">${sd.tokens_per_target_step_x}× SpecDec · BFD ${bfd.bfd_padding_waste_pct}% Pad</span>
+        <span class="tag tag-purple">-${sq.heap_alloc_reduction_pct}% Ring Heap · ${mrc.mr_cache_speedup_x}× MR AVL</span>
+      `;
 
       document.getElementById('tabMetricCompiler').textContent =
         `-${c2Init.peak_memory_saved_pct}% Mem · ${c2Init.execution_speedup_x}× Speedup`;
@@ -2483,9 +2710,12 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
         `${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}% Frag`;
       document.getElementById('tabMetricBedrock').textContent =
         `100% Causal · ${brInit.nova_micro.p50_bedrock_ms}ms vs ${brInit.nova_lite.p50_bedrock_ms}ms`;
+      document.getElementById('tabMetricQuantSpec').textContent =
+        `W8A8 ${qm.footprint_bytes.w8a8_compression_vs_fp32_x}× · Spec ${sd.tokens_per_target_step_x}× · MR ${mrc.mr_cache_speedup_x}×`;
 
       // §04 Trade-Offs Table
       const c64 = BENCHMARK_DATA.flash_attention_eval.causal_block64.n512_summary;
+      const causalLatSavePct = (((c64.naive_wall_ms - c64.flash_wall_ms) / c64.naive_wall_ms) * 100).toFixed(1);
       document.getElementById('tradeoffsTableWrap').innerHTML = `
         <table>
           <thead>
@@ -2510,7 +2740,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
               <td>Online-Softmax Tiled Streaming (<code>B_r = B_c = 32 / 64</code>)</td>
               <td>Materialized <code>N × N</code> Score + Softmax</td>
               <td><strong>-${faInit.memory_reduction_pct}%</strong> heap @ N=512 (<code>${faSweep.flash_memory_growth_x}×</code> vs <code>${faSweep.naive_memory_growth_x}×</code> growth from N=128→512)</td>
-              <td>Per-tile rescaling adds minor scalar exp work on unmasked runs, while causal tile-skipping cuts N=512 latency (${c64.naive_wall_ms}ms → ${c64.flash_wall_ms}ms).</td>
+              <td>Per-tile rescaling adds minor scalar exp work on unmasked runs, while causal tile-skipping cuts N=512 latency (${c64.naive_wall_ms}ms → ${c64.flash_wall_ms}ms, -${causalLatSavePct}%).</td>
             </tr>
             <tr>
               <td><strong>KV-Cache Manager</strong></td>
@@ -2518,6 +2748,27 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
               <td>Contiguous <code>max_seq_len = 1024</code> Slab</td>
               <td>Fragmentation <strong>${kvInit.contiguous_baseline.internal_fragmentation_pct}% → ${kvInit.paged_cow_allocator.internal_fragmentation_pct}%</strong>; <strong>${kvInit.comparison.paged_max_concurrent} vs ${kvInit.comparison.contiguous_max_concurrent}</strong> reqs @ ${kvInit.comparison.memory_cap_mb} MB</td>
               <td>Requires logical-to-physical block indirection table + SHA-256 hash lookup on full 16-token prefix chunks (${kvInit.wall_clock_ms} ms total for 64 requests).</td>
+            </tr>
+            <tr>
+              <td><strong>Quantization &amp; MoE</strong></td>
+              <td>SmoothQuant <code>W8A8</code> (<code>α=0.5</code>), 32-Group <code>W4A16</code> &amp; Bias-Balanced Top-2 <code>SwiGLU</code></td>
+              <td>FP32/FP16 Weights, Naive <code>W8A8</code> &amp; Unbalanced Gating</td>
+              <td><strong>${qm.footprint_bytes.w8a8_compression_vs_fp32_x}×</strong> vs FP32 (<code>+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB</code>), <strong>${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</strong> vs FP16, <strong>0.0%</strong> MoE drops</td>
+              <td>Requires offline calibration of per-channel migration scales <code>s_j</code> and nibble unpack arithmetic during W4A16 matmul.</td>
+            </tr>
+            <tr>
+              <td><strong>Spec-Decode &amp; AOT Buckets</strong></td>
+              <td>Leviathan/Chen Rejection Sampling (<code>γ=${sd.gamma}</code>) + Exact DP <code>K=${ab.dp_optimal_buckets.num_buckets}</code> Buckets + BFD</td>
+              <td>1-Token Autoregressive Decode &amp; Single Static <code>[2048]</code> Bucket</td>
+              <td><strong>${sd.tokens_per_target_step_x}×</strong> tokens/step (<code>-${sd.target_forward_steps_saved_pct}%</code> target steps); AOT pad <strong>${ab.single_static_bucket.padding_waste_pct}% → ${ab.dp_optimal_buckets.padding_waste_pct}%</strong>; BFD <strong>${bfd.bfd_padding_waste_pct}%</strong></td>
+              <td>Adds cheap draft steps + KV rollback on rejected tokens, and compiles <code>K=${ab.dp_optimal_buckets.num_buckets}</code> static bucket graphs ahead of time.</td>
+            </tr>
+            <tr>
+              <td><strong>Transport Ring &amp; MR Cache</strong></td>
+              <td>Pre-Allocated <code>64 B</code> WQE Ring + Augmented AVL Interval-Tree <code>MR</code> Cache</td>
+              <td>Per-Message Heap Dicts + Cold <code>4 KiB</code> Page Pinning</td>
+              <td><strong>-${sq.heap_alloc_reduction_pct}%</strong> dynamic heap (${sq.naive_queue_heap_alloc_bytes.toLocaleString()}B → ${sq.steady_state_heap_alloc_bytes.toLocaleString()}B); <strong>${mrc.mr_cache_speedup_x}×</strong> MR lookup speedup (<code>${mrc.cache_hit_rate_pct}%</code> hit)</td>
+              <td>Reserves fixed ring memory (${fmtBytes(sq.preallocated_ring_bytes)}) upfront and requires <code>invalidate_range</code> hooks when virtual slabs are freed.</td>
             </tr>
             <tr>
               <td><strong>Serverless Bedrock Tiering</strong></td>
@@ -2565,7 +2816,7 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
               <td><strong>2B. Causal Tiled FlashAttention (<code>N=512, B=64</code>)</strong></td>
               <td><code>${fmtBytes(c64.flash_peak_bytes)}</code> · <code>${c64.flash_wall_ms} ms</code> (${c64.tiles_skipped_causal} tiles skipped)</td>
               <td><code>${fmtBytes(c64.naive_peak_bytes)}</code> · <code>${c64.naive_wall_ms} ms</code></td>
-              <td><strong>-${c64.memory_reduction_pct}%</strong> memory · <strong>-27.8%</strong> wall ms</td>
+              <td><strong>-${c64.memory_reduction_pct}%</strong> memory · <strong>-${causalLatSavePct}%</strong> wall ms</td>
               <td><code>max_abs_diff = ${fmtExp(c64.max_abs_diff)}</code> (&lt; 1e-9)</td>
             </tr>
             <tr class="highlight-row">
@@ -2576,14 +2827,49 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
               <td>CoW verified (<code>${kvInit.cow_isolation_check.peer_corruptions}</code> peer corruptions · <code>${kvInit.paged_cow_allocator.cow_prefix_hit_rate_pct}%</code> hit)</td>
             </tr>
             <tr>
-              <td><strong>4A. Causal Worker Correlator (<code>48 × 64</code> logs)</strong></td>
+              <td><strong>4A. SmoothQuant <code>W8A8</code> &amp; 32g <code>W4A16</code></strong></td>
+              <td><code>W8A8</code>: <code>${fmtBytes(qm.footprint_bytes.w8a8_int8_weight_bytes)}</code> (cos <code>${qm.smoothquant_w8a8.cosine_similarity}</code>) · <code>W4A16</code>: <code>${fmtBytes(qm.footprint_bytes.w4a16_total_bytes)}</code> (cos <code>${qm.group_w4a16.cosine_similarity}</code>)</td>
+              <td><code>FP32</code>: <code>${fmtBytes(qm.footprint_bytes.fp32_weight_bytes)}</code> · <code>FP16</code>: <code>${fmtBytes(qm.footprint_bytes.fp16_weight_bytes)}</code> · Naive <code>W8A8</code> (<code>${qm.naive_w8a8.sqnr_db} dB</code>)</td>
+              <td><strong>${qm.footprint_bytes.w8a8_compression_vs_fp32_x}×</strong> vs FP32 · <strong>${qm.footprint_bytes.w4a16_compression_vs_fp16_x}×</strong> vs FP16 · <strong>+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB</strong></td>
+              <td><code>${qm.footprint_bytes.w4a16_effective_bits_per_weight}</code> bits/weight · <code>${qm.smoothquant_w8a8.max_error_reduction_x}×</code> lower max err</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>4B. Top-2 <code>SwiGLU</code> MoE + <code>TP=4</code> Sharding</strong></td>
+              <td><strong>${qm.moe_swiglu.balanced_router.drop_rate_pct}%</strong> drops · CV <code>${qm.moe_swiglu.balanced_router.load_cv}</code> · <code>${qm.moe_swiglu.active_expert_fraction_pct}%</code> active FFN</td>
+              <td>Skewed gating: <code>${qm.moe_swiglu.unbalanced_router.drop_rate_pct}%</code> drops · CV <code>${qm.moe_swiglu.unbalanced_router.load_cv}</code></td>
+              <td><strong>-${qm.moe_swiglu.unbalanced_router.drop_rate_pct} pts</strong> drops · <strong>${qm.moe_swiglu.tp_sharding_verification.per_rank_weight_reduction_x}×</strong> rank shard</td>
+              <td><code>TP=4 max_abs_diff = ${fmtExp(qm.moe_swiglu.tp_sharding_verification.max_abs_diff)}</code></td>
+            </tr>
+            <tr>
+              <td><strong>4C. Lossless Speculative Decoding (<code>γ=${sd.gamma}</code>)</strong></td>
+              <td><code>${sd.speculative_target_forward_steps}</code> target steps for <code>${sd.emitted_tokens}</code> tokens (<strong>${sd.tokens_per_target_step_x}×</strong> tok/step)</td>
+              <td><code>${sd.autoregressive_target_steps_baseline}</code> autoregressive target steps (<code>1.0×</code>)</td>
+              <td><strong>-${sd.target_forward_steps_saved_pct}%</strong> target forward passes</td>
+              <td><code>marginal diff = ${fmtExp(sd.exact_marginal_max_abs_diff)}</code> · <code>${sd.kv_rolled_back_slots}</code> KV slots rolled back</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>4D. Exact DP AOT Buckets + BFD Packing</strong></td>
+              <td>DP <code>K=${ab.dp_optimal_buckets.num_buckets}</code> (<code>[${ab.dp_optimal_buckets.buckets.join(', ')}]</code>): <strong>${ab.dp_optimal_buckets.padding_waste_pct}%</strong> pad · BFD: <strong>${bfd.bfd_padding_waste_pct}%</strong> pad</td>
+              <td>Single static <code>[${ab.max_seq_len}]</code>: <code>${ab.single_static_bucket.padding_waste_pct}%</code> pad (<code>${bfd.unpacked_bins}</code> bins)</td>
+              <td><strong>-${ab.padding_reduction_vs_single_pct}%</strong> AOT pad · <strong>${bfd.bin_reduction_x}×</strong> fewer bins (<code>${bfd.bfd_packed_bins}</code>)</td>
+              <td>Global DP optimum · <code>cross_doc_leak = ${bfd.cross_doc_attention_leakage}</code></td>
+            </tr>
+            <tr>
+              <td><strong>4E. Binary <code>SQ/CQ</code> Ring &amp; AVL <code>MR</code> Cache</strong></td>
+              <td><code>${sq.steady_state_heap_alloc_bytes.toLocaleString()} B</code> dyn heap · MR <code>${mrc.cached_lookup_wall_ms} ms</code> (<code>${mrc.cache_hit_rate_pct}%</code> hit, AVL h=<code>${mrc.avl_tree_height}</code>)</td>
+              <td><code>${sq.naive_queue_heap_alloc_bytes.toLocaleString()} B</code> dict queue · <code>${mrc.cold_page_pin_wall_ms} ms</code> cold 4KiB pin</td>
+              <td><strong>-${sq.heap_alloc_reduction_pct}%</strong> ring heap · <strong>${mrc.mr_cache_speedup_x}×</strong> MR speedup</td>
+              <td><code>${sq.srd_ooo_reordered_packets}</code> SRD OOO pkts · <code>munmap</code> eviction verified</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>5A. Causal Worker Correlator (<code>48 × 64</code> logs)</strong></td>
               <td><strong>${corrInit.causal_correlator_accuracy_pct}%</strong> (<code>${corrInit.causal_correlator_correct}/${corrInit.trials}</code>) · <code>${corrInit.alert_compression_ratio}</code> compression</td>
               <td><code>${corrInit.arrival_order_accuracy_pct}%</code> (<code>${corrInit.arrival_order_correct}/${corrInit.trials}</code> first-arrival pick)</td>
               <td><strong>+${corrInit.accuracy_gain_pts} pts</strong> accuracy in <code>${corrInit.wall_clock_ms} ms</code></td>
               <td><code>${corrInit.total_raw_worker_alarms.toLocaleString()}</code> raw alarms → <code>${corrInit.isolated_root_incidents}</code> root causes</td>
             </tr>
-            <tr class="highlight-row">
-              <td><strong>4B. Live AWS Bedrock (<code>Nova Micro vs Lite</code>)</strong></td>
+            <tr>
+              <td><strong>5B. Live AWS Bedrock (<code>Nova Micro vs Lite</code>)</strong></td>
               <td>Nova Micro: <code>p50 ${brInit.nova_micro.p50_bedrock_ms}ms</code> · <code>p95 ${brInit.nova_micro.p95_bedrock_ms}ms</code> · <code>${brInit.nova_micro.tokens_per_sec} tok/s</code> · <code>$${brInit.nova_micro.usd_per_1k_requests}/1k</code></td>
               <td>Nova Lite: <code>p50 ${brInit.nova_lite.p50_bedrock_ms}ms</code> · <code>p95 ${brInit.nova_lite.p95_bedrock_ms}ms</code> · <code>${brInit.nova_lite.tokens_per_sec} tok/s</code> · <code>$${brInit.nova_lite.usd_per_1k_requests}/1k</code></td>
               <td><strong>${brInit.head_to_head.micro_vs_lite_p50_speedup_x}×</strong> faster p50 · <strong>-${brInit.head_to_head.micro_cost_savings_vs_lite_pct}%</strong> cost</td>
@@ -3098,12 +3384,258 @@ PYTHONPATH=. python3 -m neuronpulse.server</pre>
       }
     });
 
+    // --- Sandbox 5A & 5B: Quantization, Speculative Decoding, DP Buckets & SQ/CQ + MR Ring ---
+    function renderQuantSpecResult(qsData, sourceLabel) {
+      const qm = qsData.quantization_and_moe;
+      const fb = qm.footprint_bytes;
+      const sd = qsData.speculative_decoding;
+      const ab = qsData.aot_bucketing_and_packing;
+      const bfd = ab.bfd_sequence_packing;
+      const tp = qm.moe_swiglu.tp_sharding_verification;
+
+      document.getElementById('qsVerdictBanner').innerHTML = `
+        <div>
+          <strong>✓ Lossless Spec-Decode &amp; TP=4 Verified:</strong>
+          Marginal diff = <code>${fmtExp(sd.exact_marginal_max_abs_diff)}</code> · TP=4 diff = <code>${fmtExp(tp.max_abs_diff)}</code> · BFD leak = <code>${bfd.cross_doc_attention_leakage}</code>
+        </div>
+        <span class="tag tag-accent">${escHtml(sourceLabel)}</span>
+      `;
+
+      document.getElementById('qsKpiGrid').innerHTML = `
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${fb.w8a8_compression_vs_fp32_x}× / ${fb.w4a16_compression_vs_fp16_x}×</div>
+          <div class="mini-kpi-lbl">W8A8 vs FP32 · W4A16 vs FP16</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">+${qm.smoothquant_w8a8.sqnr_gain_over_naive_db} dB</div>
+          <div class="mini-kpi-lbl">SmoothQuant SQNR (${qm.smoothquant_w8a8.cosine_similarity})</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${sd.tokens_per_target_step_x}×</div>
+          <div class="mini-kpi-lbl">Tokens / Target Step (-${sd.target_forward_steps_saved_pct}%)</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${qm.moe_swiglu.balanced_router.drop_rate_pct}%</div>
+          <div class="mini-kpi-lbl">MoE Drops (vs ${qm.moe_swiglu.unbalanced_router.drop_rate_pct}% Skewed)</div>
+        </div>
+      `;
+
+      const w8Pct = Math.round((fb.w8a8_int8_weight_bytes / Math.max(1, fb.fp32_weight_bytes)) * 100);
+      const w4Pct = Math.round((fb.w4a16_total_bytes / Math.max(1, fb.fp32_weight_bytes)) * 100);
+      const specStepPct = Math.round((sd.speculative_target_forward_steps / Math.max(1, sd.autoregressive_target_steps_baseline)) * 100);
+
+      document.getElementById('qsBars').innerHTML = `
+        <div class="bar-row">
+          <div class="bar-meta"><span>FP32 Weight Footprint (${qm.dimensions.in_features}×${qm.dimensions.out_features})</span><span>${fmtBytes(fb.fp32_weight_bytes)} (100%)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-fail" style="width:100%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>SmoothQuant W8A8 (α=${qm.smoothquant_w8a8.alpha}, cos=${qm.smoothquant_w8a8.cosine_similarity})</span><span>${fmtBytes(fb.w8a8_int8_weight_bytes)} (${fb.w8a8_compression_vs_fp32_x}× vs FP32)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-accent" style="width:${w8Pct}%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>32-Group W4A16 (${fb.w4a16_effective_bits_per_weight} bits/w, cos=${qm.group_w4a16.cosine_similarity})</span><span>${fmtBytes(fb.w4a16_total_bytes)} (${fb.w4a16_compression_vs_fp16_x}× vs FP16)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-pass" style="width:${w4Pct}%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>Speculative Target Steps (${sd.emitted_tokens} tokens @ γ=${sd.gamma})</span><span>${sd.speculative_target_forward_steps} vs ${sd.autoregressive_target_steps_baseline} steps (${sd.tokens_per_target_step_x}×)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-purple" style="width:${specStepPct}%;"></div></div>
+        </div>
+      `;
+
+      document.getElementById('qsBucketTableWrap').innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Compilation / Packing Mode</th>
+              <th>Buckets / Bins</th>
+              <th>Pad Waste</th>
+              <th>Utilization</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Single Static AOT</td>
+              <td class="mono">[${ab.single_static_bucket.buckets.join(', ')}]</td>
+              <td class="mono">${ab.single_static_bucket.padding_waste_pct}%</td>
+              <td class="mono">${ab.single_static_bucket.compute_utilization_pct}%</td>
+            </tr>
+            <tr>
+              <td>Powers-of-Two AOT</td>
+              <td class="mono">[${ab.pow2_static_buckets.buckets.join(', ')}]</td>
+              <td class="mono">${ab.pow2_static_buckets.padding_waste_pct}%</td>
+              <td class="mono">${ab.pow2_static_buckets.compute_utilization_pct}%</td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>Exact DP Optimal AOT</strong></td>
+              <td class="mono"><strong>[${ab.dp_optimal_buckets.buckets.join(', ')}]</strong></td>
+              <td class="mono"><strong>${ab.dp_optimal_buckets.padding_waste_pct}%</strong></td>
+              <td class="mono"><strong>${ab.dp_optimal_buckets.compute_utilization_pct}%</strong></td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>BFD Sequence Packing</strong></td>
+              <td class="mono"><strong>${bfd.bfd_packed_bins}</strong> vs ${bfd.unpacked_bins} bins (${bfd.bin_reduction_x}×)</td>
+              <td class="mono"><strong>${bfd.bfd_padding_waste_pct}%</strong></td>
+              <td class="mono"><strong>${bfd.bfd_token_utilization_pct}%</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderTransportResult(trData, sourceLabel) {
+      const sq = trData.sq_cq_ring;
+      const mrc = trData.mr_interval_cache;
+      const inv = mrc.invalidation_safety_check;
+
+      document.getElementById('trVerdictBanner').innerHTML = `
+        <div>
+          <strong>✓ AVL Balance &amp; munmap Invalidation Verified:</strong>
+          AVL h = <code>${mrc.avl_tree_height} ≤ ${mrc.avl_height_upper_bound}</code> · Evicted stale MR = <code>${inv.evicted_overlapping_mrs}</code> (fresh lkey = <code>${inv.fresh_lkey_issued}</code>)
+        </div>
+        <span class="tag tag-purple">${escHtml(sourceLabel)}</span>
+      `;
+
+      document.getElementById('trKpiGrid').innerHTML = `
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">-${sq.heap_alloc_reduction_pct}%</div>
+          <div class="mini-kpi-lbl">${sq.naive_queue_heap_alloc_bytes.toLocaleString()}B → ${sq.steady_state_heap_alloc_bytes.toLocaleString()}B</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${mrc.mr_cache_speedup_x}×</div>
+          <div class="mini-kpi-lbl">MR Cache vs Cold 4KiB Pin</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${mrc.cache_hit_rate_pct}%</div>
+          <div class="mini-kpi-lbl">MR Hit (${mrc.avg_tree_comparisons_per_lookup} cmp/lookup)</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-val">${sq.srd_ooo_reordered_packets}</div>
+          <div class="mini-kpi-lbl">SRD OOO Packets Reordered</div>
+        </div>
+      `;
+
+      const ringHeapPct = Math.max(3, Math.round((sq.steady_state_heap_alloc_bytes / Math.max(1, sq.naive_queue_heap_alloc_bytes)) * 100));
+      const mrLatPct = Math.max(4, Math.round((mrc.cached_lookup_wall_ms / Math.max(0.01, mrc.cold_page_pin_wall_ms)) * 100));
+
+      document.getElementById('trBars').innerHTML = `
+        <div class="bar-row">
+          <div class="bar-meta"><span>Naive Heap Descriptor Queue (${sq.messages_processed} msgs)</span><span>${sq.naive_queue_heap_alloc_bytes.toLocaleString()} B dynamic heap</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-fail" style="width:100%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>Pre-Allocated 64B SQ / 32B CQ Binary Ring</span><span>${sq.steady_state_heap_alloc_bytes.toLocaleString()} B (-${sq.heap_alloc_reduction_pct}%)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-pass" style="width:${ringHeapPct}%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span>MR Pinning Latency (${mrc.lookups_evaluated} lookups · ${mrc.cold_pages_walked.toLocaleString()} pages cold)</span><span>${mrc.cold_page_pin_wall_ms} ms → ${mrc.cached_lookup_wall_ms} ms (${mrc.mr_cache_speedup_x}×)</span></div>
+          <div class="bar-track"><div class="bar-fill bar-fill-accent" style="width:${mrLatPct}%;"></div></div>
+        </div>
+      `;
+
+      document.getElementById('trTreeTag').textContent = `AVL h=${mrc.avl_tree_height} · ${sq.ring_us_per_msg} µs/msg`;
+      document.getElementById('trOutputBox').textContent = JSON.stringify({
+        sq_cq_ring: {
+          ring_capacity: sq.ring_capacity,
+          wqe_bytes: sq.wqe_bytes,
+          cqe_bytes: sq.cqe_bytes,
+          descriptor_state_transitions: sq.descriptor_state_transitions,
+          srd_ooo_reordered_packets: sq.srd_ooo_reordered_packets,
+          final_occupancy_sq_cq: [sq.final_sq_occupancy, sq.final_cq_occupancy]
+        },
+        mr_interval_cache: {
+          registered_slabs_in_tree: mrc.registered_slabs_in_tree,
+          avl_tree_height: mrc.avl_tree_height,
+          avg_tree_comparisons_per_lookup: mrc.avg_tree_comparisons_per_lookup,
+          cached_us_vs_cold_us: [mrc.cached_us_per_lookup, mrc.cold_us_per_lookup],
+          invalidation_safety_check: mrc.invalidation_safety_check
+        }
+      }, null, 2);
+    }
+
+    document.getElementById('qsAlpha').addEventListener('input', e => {
+      document.getElementById('qsAlphaVal').textContent = Number(e.target.value).toFixed(2);
+    });
+    document.getElementById('qsGamma').addEventListener('input', e => {
+      document.getElementById('qsGammaVal').textContent = `${e.target.value} tokens`;
+    });
+    document.getElementById('qsAlign').addEventListener('input', e => {
+      document.getElementById('qsAlignVal').textContent = Number(e.target.value).toFixed(2);
+    });
+    document.getElementById('qsBuckets').addEventListener('input', e => {
+      document.getElementById('qsBucketsVal').textContent = `${e.target.value} buckets`;
+    });
+    document.getElementById('trMsgs').addEventListener('input', e => {
+      document.getElementById('trMsgsVal').textContent = e.target.value;
+    });
+    document.getElementById('trRegions').addEventListener('input', e => {
+      document.getElementById('trRegionsVal').textContent = `${e.target.value} slabs`;
+    });
+
+    document.getElementById('runQuantSpecBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('runQuantSpecBtn');
+      btn.disabled = true;
+      setStudioStatus('Executing /api/quant-spec on Python 3.12 Lambda...', true);
+      try {
+        const resp = await fetch('/api/quant-spec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            alpha: Number(document.getElementById('qsAlpha').value),
+            gamma: Number(document.getElementById('qsGamma').value),
+            draft_alignment: Number(document.getElementById('qsAlign').value),
+            max_buckets: Number(document.getElementById('qsBuckets').value),
+            group_size: 32,
+            top_k: 2
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Quant-Spec API error');
+        renderQuantSpecResult(data, `Live Lambda · Py ${data.python_version} · ${data.handler_wall_ms}ms`);
+        setStudioStatus(`Live /api/quant-spec completed in ${data.handler_wall_ms} ms (req ${data.request_id})`, false);
+      } catch (err) {
+        setStudioStatus(`Error: ${err.message}`, true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('runTransportBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('runTransportBtn');
+      btn.disabled = true;
+      setStudioStatus('Executing /api/transport/ring on Python 3.12 Lambda...', true);
+      try {
+        const resp = await fetch('/api/transport/ring', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ring_capacity: Number(document.getElementById('trCapacity').value),
+            num_messages: Number(document.getElementById('trMsgs').value),
+            num_mr_regions: Number(document.getElementById('trRegions').value),
+            num_mr_lookups: 1024,
+            batch_size: 32,
+            tensor_bytes: 1048576
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Transport Ring API error');
+        renderTransportResult(data, `Live Lambda · Py ${data.python_version} · ${data.handler_wall_ms}ms`);
+        setStudioStatus(`Live /api/transport/ring completed in ${data.handler_wall_ms} ms (req ${data.request_id})`, false);
+      } catch (err) {
+        setStudioStatus(`Error: ${err.message}`, true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     hydrateStaticFromBenchmarks();
     renderCompilerResult(c2Init, `Measured CPython ${BENCHMARK_DATA.environment.python_version}`);
     renderAttentionResult(faInit, BENCHMARK_DATA.flash_attention_eval.primary_block32.sweep, `Measured CPython ${BENCHMARK_DATA.environment.python_version}`);
     renderKvResult(kvInit, `Measured CPython ${BENCHMARK_DATA.environment.python_version}`);
     renderCorrelatorResult(corrInit, corrInit.sample_trial.correlation);
     renderBedrockResult(brInit);
+    renderQuantSpecResult(qsInit, `Measured CPython ${BENCHMARK_DATA.environment.python_version}`);
+    renderTransportResult(trInit, `Measured CPython ${BENCHMARK_DATA.environment.python_version}`);
 
     fetch('/api/health').then(r => r.ok ? r.json() : null).then(h => {
       if (h && h.status === 'ok') {
