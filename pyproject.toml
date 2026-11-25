@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuronpulse-cluster-os"
+version = "1.0.0"
+description = "AWS Trainium2 64-NeuronCore UltraServer Observability, Cross-Node Error Correlator, Automated Spare-Swap Repair & Neuron NKI Inference Profiler"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Ritwika Reddy Kancharla" }]
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["neuronpulse*"]

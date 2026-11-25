@@ -1,0 +1,244 @@
+{
+  "benchmark_suite": "neuronpulse-ultraserver-v1",
+  "fault_correlation_eval": {
+    "trials": 48,
+    "total_raw_rank_alarms": 3072,
+    "causal_correlator_accuracy_pct": 100.0,
+    "naive_log_arrival_accuracy_pct": 4.2,
+    "alert_noise_reduction_ratio": "64:1",
+    "false_healthy_node_cordons": 0
+  },
+  "ultraserver_automated_repair": {
+    "hardware_node_swap_mttr_sec": 74.0,
+    "manual_reboot_baseline_sec": 2520.0,
+    "mttr_speedup_x": 34.1,
+    "kv_compaction_in_place_sec": 4.4
+  },
+  "nki_serving_roofline": {
+    "configs_evaluated": 24,
+    "bf16_tp8_unfused_ttft_ms": 1016.9,
+    "bf16_tp8_unfused_tok_s": 9502.4,
+    "fp8_tp8_nki_flash_ttft_ms": 519.0,
+    "fp8_tp8_nki_flash_tok_s": 22300.0,
+    "throughput_speedup_x": 2.35,
+    "ttft_reduction_pct": 49.0,
+    "sweep_matrix": [
+      {
+        "tp": 2,
+        "precision": "BF16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": false,
+        "ttft_ms": 4051.2,
+        "ultraserver_throughput_tok_s": 0.0,
+        "hbm_used_per_core_gb": 86.64
+      },
+      {
+        "tp": 2,
+        "precision": "BF16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": false,
+        "ttft_ms": 3818.8,
+        "ultraserver_throughput_tok_s": 0.0,
+        "hbm_used_per_core_gb": 83.04
+      },
+      {
+        "tp": 2,
+        "precision": "FP8",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 2190.8,
+        "ultraserver_throughput_tok_s": 20848.0,
+        "hbm_used_per_core_gb": 45.97
+      },
+      {
+        "tp": 2,
+        "precision": "FP8",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 2064.9,
+        "ultraserver_throughput_tok_s": 27148.8,
+        "hbm_used_per_core_gb": 42.37
+      },
+      {
+        "tp": 2,
+        "precision": "W4A16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 3165.5,
+        "ultraserver_throughput_tok_s": 26624.0,
+        "hbm_used_per_core_gb": 35.45
+      },
+      {
+        "tp": 2,
+        "precision": "W4A16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 2983.7,
+        "ultraserver_throughput_tok_s": 33952.0,
+        "hbm_used_per_core_gb": 31.85
+      },
+      {
+        "tp": 4,
+        "precision": "BF16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 2027.6,
+        "ultraserver_throughput_tok_s": 10339.2,
+        "hbm_used_per_core_gb": 45.97
+      },
+      {
+        "tp": 4,
+        "precision": "BF16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 1910.8,
+        "ultraserver_throughput_tok_s": 13502.4,
+        "hbm_used_per_core_gb": 42.37
+      },
+      {
+        "tp": 4,
+        "precision": "FP8",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 1097.4,
+        "ultraserver_throughput_tok_s": 19646.4,
+        "hbm_used_per_core_gb": 25.63
+      },
+      {
+        "tp": 4,
+        "precision": "FP8",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 1033.8,
+        "ultraserver_throughput_tok_s": 25728.0,
+        "hbm_used_per_core_gb": 22.03
+      },
+      {
+        "tp": 4,
+        "precision": "W4A16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 1584.7,
+        "ultraserver_throughput_tok_s": 24710.4,
+        "hbm_used_per_core_gb": 20.38
+      },
+      {
+        "tp": 4,
+        "precision": "W4A16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 1493.3,
+        "ultraserver_throughput_tok_s": 31761.6,
+        "hbm_used_per_core_gb": 16.78
+      },
+      {
+        "tp": 8,
+        "precision": "BF16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 1016.9,
+        "ultraserver_throughput_tok_s": 9502.4,
+        "hbm_used_per_core_gb": 25.63
+      },
+      {
+        "tp": 8,
+        "precision": "BF16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 957.5,
+        "ultraserver_throughput_tok_s": 12500.0,
+        "hbm_used_per_core_gb": 22.03
+      },
+      {
+        "tp": 8,
+        "precision": "FP8",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 551.8,
+        "ultraserver_throughput_tok_s": 16820.0,
+        "hbm_used_per_core_gb": 15.47
+      },
+      {
+        "tp": 8,
+        "precision": "FP8",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 519.0,
+        "ultraserver_throughput_tok_s": 22300.0,
+        "hbm_used_per_core_gb": 11.87
+      },
+      {
+        "tp": 8,
+        "precision": "W4A16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 795.4,
+        "ultraserver_throughput_tok_s": 20414.4,
+        "hbm_used_per_core_gb": 12.84
+      },
+      {
+        "tp": 8,
+        "precision": "W4A16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 748.8,
+        "ultraserver_throughput_tok_s": 26722.4,
+        "hbm_used_per_core_gb": 9.24
+      },
+      {
+        "tp": 16,
+        "precision": "BF16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 514.2,
+        "ultraserver_throughput_tok_s": 7240.0,
+        "hbm_used_per_core_gb": 15.47
+      },
+      {
+        "tp": 16,
+        "precision": "BF16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 482.7,
+        "ultraserver_throughput_tok_s": 9726.4,
+        "hbm_used_per_core_gb": 11.87
+      },
+      {
+        "tp": 16,
+        "precision": "FP8",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 281.6,
+        "ultraserver_throughput_tok_s": 10847.6,
+        "hbm_used_per_core_gb": 10.38
+      },
+      {
+        "tp": 16,
+        "precision": "FP8",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 263.5,
+        "ultraserver_throughput_tok_s": 14780.8,
+        "hbm_used_per_core_gb": 6.78
+      },
+      {
+        "tp": 16,
+        "precision": "W4A16",
+        "nki_flash_fusion": false,
+        "fits_in_hbm": true,
+        "ttft_ms": 403.4,
+        "ultraserver_throughput_tok_s": 12213.6,
+        "hbm_used_per_core_gb": 9.07
+      },
+      {
+        "tp": 16,
+        "precision": "W4A16",
+        "nki_flash_fusion": true,
+        "fits_in_hbm": true,
+        "ttft_ms": 378.4,
+        "ultraserver_throughput_tok_s": 16623.2,
+        "hbm_used_per_core_gb": 5.47
+      }
+    ]
+  }
+}
