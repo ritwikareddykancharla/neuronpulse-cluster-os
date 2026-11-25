@@ -1064,11 +1064,14 @@ def run_quant_spec_suite(
     draft_alignment: float = 0.80,
     max_buckets: int = 5,
     top_k: int = 2,
+    batch_tokens: int = 48,
+    num_target_tokens: int = 256,
+    num_sequences: int = 256,
 ) -> Dict[str, Any]:
     """Combined runner for `/api/quant-spec` returning Quantization+MoE+TP, Speculative Decoding, and DP Bucketing+BFD."""
     t0 = time.perf_counter()
     quant_moe = run_quantization_moe_benchmark(
-        batch_tokens=48,
+        batch_tokens=batch_tokens,
         in_features=128,
         out_features=256,
         alpha=alpha,
@@ -1077,11 +1080,11 @@ def run_quant_spec_suite(
     )
     spec_dec = run_speculative_decoding_benchmark(
         gamma=gamma,
-        num_target_tokens=256,
+        num_target_tokens=num_target_tokens,
         draft_alignment=draft_alignment,
     )
     aot_pack = run_aot_bucket_and_packing_benchmark(
-        num_sequences=256,
+        num_sequences=num_sequences,
         max_buckets=max_buckets,
         max_seq_len=2048,
     )

@@ -112,26 +112,30 @@ def route_api_request(
             saved = _load_saved_benchmarks()
             live_compiler = run_compiler_pass_benchmark(
                 preset="stacked_2layer_mlp",
-                batch_tokens=48,
-                hidden_dim=48,
+                batch_tokens=32,
+                hidden_dim=32,
                 repeats=1,
             )
-            live_attn = benchmark_attention_pair(seq_len=256, head_dim=32, block_size=32, causal=False)
+            live_attn = benchmark_attention_pair(seq_len=128, head_dim=32, block_size=32, causal=False)
             live_kv = run_paged_kv_benchmark(
-                num_requests=64,
+                num_requests=32,
                 block_size=16,
                 max_seq_len=1024,
                 system_prompt_tokens=256,
-                memory_cap_mb=1280,
+                memory_cap_mb=640,
             )
-            live_quant_spec = run_quant_spec_suite()
+            live_quant_spec = run_quant_spec_suite(
+                batch_tokens=24,
+                num_target_tokens=64,
+                num_sequences=64,
+            )
             live_transport = run_transport_ring_mr_benchmark(
-                ring_capacity=128,
-                num_messages=1024,
-                num_mr_regions=64,
-                num_mr_lookups=256,
+                ring_capacity=64,
+                num_messages=512,
+                num_mr_regions=32,
+                num_mr_lookups=128,
             )
-            live_corr = run_correlator_benchmark(trials=48, num_workers=64, seed=42)
+            live_corr = run_correlator_benchmark(trials=16, num_workers=64, seed=42)
             return 200, {
                 "request_id": request_id,
                 "python_version": platform.python_version(),
