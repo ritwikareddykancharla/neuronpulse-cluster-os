@@ -1,202 +1,2181 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEURONPULSE // TRN2-ULTRASERVER-04</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuronPulse — Trainium2 64-NeuronCore Telemetry, Fault Correlator &amp; NKI Roofline Studio</title>
+  <meta name="description" content="AWS Trainium2 64-NeuronCore UltraServer Observability, Cross-Node Monotonic Fault Correlator (48 -> 1), Automated 74s Hot-Spare Swap & S3 Express Checkpoint Recovery, NKI FlashAttention Roofline Studio, and Amazon Bedrock Nova Compiler Copilot." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&amp;family=Schibsted+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-paper: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F2ECE1;
+      --bg-obsidian: #141413;
+      --bg-code: #121417;
+      --text-code: #F4F4F5;
+      --ink: #141413;
+      --ink-muted: #52514E;
+      --border: #18181B;
+      --shadow: 4px 4px 0px #18181B;
+      --shadow-sm: 2px 2px 0px #18181B;
+      --dot-color: rgba(24, 24, 27, 0.13);
+      --accent-main: #2563EB;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #DBEAFE;
+      --accent-deep: #1E40AF;
+      --teal: #0D9488;
+      --teal-soft: #CCFBF1;
+      --pass: #059669;
+      --pass-soft: #D1FAE5;
+      --fail: #DC2626;
+      --fail-soft: #FEE2E2;
+      --warn: #D97706;
+      --warn-soft: #FEF3C7;
+      --purple: #6D28D9;
+      --purple-soft: #EDE9FE;
+    }
+
+    [data-theme="dark"] {
+      --bg-paper: #0E1113;
+      --bg-card: #161A1E;
+      --bg-subtle: #1F252B;
+      --bg-obsidian: #090B0C;
+      --bg-code: #090B0D;
+      --text-code: #E4E4E7;
+      --ink: #F4F4F5;
+      --ink-muted: #A1A1AA;
+      --border: #52525B;
+      --shadow: 4px 4px 0px #000000;
+      --shadow-sm: 2px 2px 0px #000000;
+      --dot-color: rgba(255, 255, 255, 0.08);
+      --accent-main: #2563EB;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #1E3A8A;
+      --accent-deep: #93C5FD;
+      --teal: #2DD4BF;
+      --teal-soft: #134E4A;
+      --pass: #34D399;
+      --pass-soft: #064E3B;
+      --fail: #F87171;
+      --fail-soft: #450A0A;
+      --warn: #FBBF24;
+      --warn-soft: #451A03;
+      --purple: #C4B5FD;
+      --purple-soft: #2E1065;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-paper);
+      background-image: radial-gradient(var(--dot-color) 1.25px, transparent 1.25px);
+      background-size: 20px 20px;
+      color: var(--ink);
+      line-height: 1.55;
+      padding-bottom: 4rem;
+    }
+
+    .serif { font-family: 'Newsreader', Georgia, serif; }
+    .mono { font-family: 'Martian Mono', monospace; }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Sticky Topbar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-paper);
+      border-bottom: 2px solid var(--border);
+      padding: 0.8rem 0;
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-badge {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.22rem 0.58rem;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn, .nav-pill {
+      font-family: 'Schibsted Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      padding: 0.46rem 0.85rem;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      color: var(--ink);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover, .nav-pill:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow);
+    }
+
+    .btn:active, .nav-pill:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0px var(--border);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-accent {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+    }
+
+    .btn-obsidian {
+      background: #18181B;
+      color: #FAF7F2;
+    }
+
+    [data-theme="dark"] .btn-obsidian {
+      background: var(--accent-main);
+      color: #FFFFFF;
+    }
+
+    .btn-secondary { background: var(--bg-subtle); }
+    .btn-danger { background: var(--fail-soft); color: var(--fail); }
+
+    /* Hero */
+    .hero {
+      padding: 2.4rem 0 2rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .hero-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.95rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.28rem 0.68rem;
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .runtime-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.28rem 0.68rem;
+      background: var(--bg-card);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pass);
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(1.95rem, 3.7vw, 2.95rem);
+      font-weight: 800;
+      line-height: 1.09;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.85rem;
+    }
+
+    .hero-sub {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.12rem, 1.9vw, 1.34rem);
+      color: var(--ink-muted);
+      max-width: 1020px;
+      margin-bottom: 1.25rem;
+    }
+
+    .headline-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .headline-pill {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 0.32rem 0.65rem;
+      background: var(--bg-obsidian);
+      color: #FAF7F2;
+      border: 2px solid var(--border);
+    }
+
+    .headline-pill span {
+      color: #93C5FD;
+      font-weight: 700;
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.1rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+    }
+
+    .kpi-card {
+      padding: 1rem 1.15rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: var(--accent-main);
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .kpi-val {
+      font-family: 'Martian Mono', monospace;
+      font-size: 1.44rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-top: 0.25rem;
+    }
+
+    .kpi-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-top: 0.2rem;
+    }
+
+    .kpi-sub {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.69rem;
+      color: var(--ink-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Pipeline Banner */
+    .pipeline-bar {
+      margin-top: 1.35rem;
+      background: var(--bg-obsidian);
+      color: #FAF7F2;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 0.9rem 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .pipe-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .pipe-num {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--accent-main);
+      color: #FFFFFF;
+      padding: 0.14rem 0.42rem;
+      border: 1.5px solid #FFFFFF;
+    }
+
+    .pipe-arrow {
+      color: #93C5FD;
+      font-family: 'Martian Mono', monospace;
+      font-weight: 700;
+    }
+
+    /* Walkthrough */
+    .section { padding: 2.2rem 0 0.6rem; }
+
+    .section-header {
+      margin-bottom: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-size: 1.52rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .section-desc {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--ink-muted);
+      max-width: 860px;
+      margin-top: 0.2rem;
+    }
+
+    .walkthrough-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 1024px) {
+      .walkthrough-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .walkthrough-grid { grid-template-columns: 1fr; }
+    }
+
+    .step-badge {
+      display: inline-block;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.52rem;
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      border: 1.5px solid var(--border);
+      margin-bottom: 0.65rem;
+    }
+
+    .walkthrough-card h3 { font-size: 1.02rem; font-weight: 800; margin-bottom: 0.42rem; }
+    .walkthrough-card p { font-size: 0.87rem; color: var(--ink-muted); }
+
+    /* Tabs */
+    .tabs-wrapper { padding: 1.8rem 0 0.5rem; }
+
+    .tab-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.4rem;
+    }
+
+    @media (max-width: 960px) {
+      .tab-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 580px) {
+      .tab-bar { grid-template-columns: 1fr; }
+    }
+
+    .tab-btn {
+      text-align: left;
+      padding: 0.9rem 1rem;
+      background: var(--bg-card);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+    }
+
+    .tab-btn:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-main);
+      color: var(--accent-ink);
+      box-shadow: var(--shadow);
+      transform: translate(-1px, -1px);
+    }
+
+    .tab-btn-eyebrow {
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .tab-btn-title { font-size: 0.93rem; font-weight: 800; letter-spacing: -0.01em; }
+    .tab-btn-metric { font-family: 'Martian Mono', monospace; font-size: 0.69rem; font-weight: 600; opacity: 0.92; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .sim-header {
+      margin-bottom: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .sim-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.02em; }
+    .sim-desc { font-family: 'Newsreader', Georgia, serif; font-size: 1.08rem; color: var(--ink-muted); max-width: 860px; margin-top: 0.25rem; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .grid-equal {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .grid-2, .grid-equal { grid-template-columns: 1fr; }
+    }
+
+    /* Tags & Banners */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.18rem 0.5rem;
+      border: 1.5px solid var(--border);
+      text-transform: uppercase;
+    }
+
+    .tag-pass { background: var(--pass-soft); color: var(--pass); }
+    .tag-fail { background: var(--fail-soft); color: var(--fail); }
+    .tag-warn { background: var(--warn-soft); color: var(--warn); }
+    .tag-accent { background: var(--accent-main); color: var(--accent-ink); }
+    .tag-soft { background: var(--accent-soft); color: var(--accent-deep); }
+    .tag-purple { background: var(--purple-soft); color: var(--purple); }
+
+    .verdict-banner {
+      border: 2px solid var(--border);
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.95rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .verdict-allow { background: var(--pass-soft); }
+    .verdict-deny { background: var(--fail-soft); }
+    .verdict-warn { background: var(--warn-soft); }
+    .verdict-cobalt { background: var(--accent-soft); }
+
+    /* 64-NeuronCore Neo-Brutalist Matrix (4 Nodes x 16 Cores) */
+    .nodes-matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.9rem;
+    }
+
+    @media (max-width: 720px) {
+      .nodes-matrix { grid-template-columns: 1fr; }
+    }
+
+    .node-box {
+      border: 2px solid var(--border);
+      background: var(--bg-paper);
+      padding: 0.75rem;
+    }
+
+    .node-box.spare-promoted {
+      background: var(--accent-soft);
+    }
+
+    .node-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.55rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .cores-grid-16 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.38rem;
+    }
+
+    .core-tile {
+      border: 1.5px solid var(--border);
+      background: var(--pass-soft);
+      color: var(--ink);
+      padding: 0.32rem 0.35rem;
+      text-align: left;
+      cursor: pointer;
+      font-family: 'Martian Mono', monospace;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .core-tile:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .core-tile.selected {
+      outline: 2.5px solid var(--accent-main);
+      outline-offset: 1px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .core-tile.ROOT_FAULT {
+      background: var(--fail);
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    .core-tile.RING_STALLED {
+      background: var(--warn-soft);
+      color: var(--ink);
+    }
+
+    .core-tile.KV_PRESSURE {
+      background: var(--purple-soft);
+      color: var(--ink);
+    }
+
+    .core-tile.SPARE_ACTIVE {
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .core-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      font-weight: 700;
+    }
+
+    .core-sub {
+      font-size: 0.58rem;
+      opacity: 0.88;
+      margin-top: 0.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Controls, Bars, Code & Tables */
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    textarea, select, input[type="text"] {
+      width: 100%;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.76rem;
+      padding: 0.62rem 0.75rem;
+      background: var(--bg-paper);
+      color: var(--ink);
+      border: 2px solid var(--border);
+      line-height: 1.48;
+      box-shadow: var(--shadow-sm);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-main);
+      cursor: pointer;
+      height: 6px;
+      margin-bottom: 0.75rem;
+    }
+
+    .seg-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .seg-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.62rem;
+      margin: 0.75rem 0;
+    }
+
+    .bar-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.22rem;
+    }
+
+    .bar-meta {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 16px;
+      background: var(--bg-subtle);
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      transition: width 0.28s ease;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-subtle);
+      border: 2px solid var(--border);
+      border-bottom: none;
+      padding: 0.45rem 0.8rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.71rem;
+      font-weight: 700;
+    }
+
+    .code-box {
+      background: var(--bg-code);
+      color: var(--text-code);
+      border: 2px solid var(--border);
+      padding: 0.9rem 1rem;
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.73rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .scrubber-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin: 0.85rem 0 1rem;
+    }
+
+    @media (max-width: 860px) {
+      .scrubber-grid { grid-template-columns: 1fr; }
+    }
+
+    .scrub-step {
+      border: 2px solid var(--border);
+      background: var(--bg-paper);
+      padding: 0.65rem 0.7rem;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .scrub-step:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scrub-step.active {
+      background: var(--accent-main);
+      color: #FFFFFF;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scrub-step.done {
+      background: var(--pass-soft);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.79rem;
+    }
+
+    th, td {
+      padding: 0.58rem 0.72rem;
+      text-align: left;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    th {
+      background: var(--bg-subtle);
+      font-family: 'Martian Mono', monospace;
+      font-size: 0.69rem;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr.highlight-row { background: var(--accent-soft); font-weight: 700; }
+
+    .footer {
+      margin-top: 3rem;
+      padding-top: 1.6rem;
+      border-top: 2px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.83rem;
+      color: var(--ink-muted);
+    }
+  </style>
 </head>
 <body>
-  <div class="app" id="app-root">
-    <!-- Hardware Top Bar -->
-    <header class="bar">
-      <div class="brand">
-        <svg class="wafer-icon" viewBox="0 0 44 44" aria-hidden="true">
-          <circle cx="22" cy="22" r="20" fill="#091320" stroke="#00e5ff" stroke-width="1.6"/>
-          <rect x="11" y="11" width="9" height="9" fill="#10f59c" opacity="0.85"/>
-          <rect x="24" y="11" width="9" height="9" fill="#00e5ff" opacity="0.85"/>
-          <rect x="11" y="24" width="9" height="9" fill="#00e5ff" opacity="0.85"/>
-          <rect x="24" y="24" width="9" height="9" fill="#10f59c" opacity="0.85"/>
-          <path d="M22 2v6M22 36v6M2 22h6M36 22h6" stroke="#00e5ff" stroke-width="1.4"/>
-        </svg>
-        <div>
-          <h1>NEURONPULSE <span>// TRN2-ULTRASERVER-04</span></h1>
-          <p>64-NeuronCore Silicon Telemetry &middot; Cross-Node Fault Correlator &middot; 74s Spare Swap &middot; NKI Roofline Scope</p>
+  <!-- Sticky Topbar -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#cluster-matrix" class="brand" onclick="switchTab('cluster-matrix')">
+        <span class="brand-badge">NEURONPULSE v1.0</span>
+        <span>NeuronPulse</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a class="nav-pill" href="#how-it-works">How It Works</a>
+        <a class="nav-pill" href="#live-sandboxes">4 Live Sandboxes</a>
+        <a class="nav-pill" href="#copilot-bench" onclick="switchTab('copilot-bench')">Benchmarks</a>
+        <a class="nav-pill" href="https://d13kangk4fqjbf.cloudfront.net" target="_blank" rel="noopener">AegisOps ↗</a>
+        <a class="nav-pill" href="https://d2gltlwyzbnbxr.cloudfront.net" target="_blank" rel="noopener">QuickSpaces ↗</a>
+        <a class="btn btn-obsidian" href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os" target="_blank" rel="noopener">★ GitHub Repo</a>
+        <button type="button" class="btn btn-secondary" id="themeToggleBtn" aria-label="Toggle color theme">
+          <span id="themeIcon">🌙</span>
+          <span id="themeLabel">Dark Mode</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-top-row">
+        <div class="eyebrow">AWS Trainium2 UltraServer • 3.2 Tbps EFAv3 SRD • NKI Roofline • Bedrock Nova</div>
+        <div class="runtime-pill" id="runtimePill">
+          <span class="pulse-dot"></span>
+          <span id="runtimeModeText">Probing CloudFront /api/health...</span>
         </div>
       </div>
 
-      <div class="bar-right">
-        <div class="pulse-badge" id="cluster-pulse"><i></i><span id="cluster-pulse-text">64/64 CORES NOMINAL</span></div>
-        <button type="button" class="btn" id="reset-btn">Reset Wafer</button>
-        <a class="btn" href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os" target="_blank" rel="noreferrer">GitHub &nearr;</a>
-      </div>
-    </header>
+      <h1>NeuronPulse — Trainium2 64-NeuronCore Telemetry, Fault Correlator &amp; NKI Roofline Studio</h1>
+      <p class="hero-sub">
+        An observability, causal fault-isolation, automated warm-spare recovery, and Neuron Kernel Interface (<code>NKI</code>) roofline studio for 64-NeuronCore AWS Trainium2 (<code>trn2.48xlarge</code>) UltraServers—collapsing sympathetic <code>nccomAllReduce</code> ring timeouts into the single physical root rank and restoring cluster goodput in <code>74.0s</code>.
+      </p>
 
-    <!-- Tactile Sabotage & Automated Repair Control Deck -->
-    <section class="deck" aria-label="Sabotage and Automated Repair Controls">
-      <div class="sabotage-group">
-        <span class="deck-label">Sabotage switches:</span>
-        <button type="button" class="sw-btn" id="sw-ecc" data-fault="fault_hbm_ecc">
-          <span class="led"></span>HBM3e Double-Bit ECC (trn2-node-02:nc-09)
-        </button>
-        <button type="button" class="sw-btn" id="sw-efa" data-fault="fault_efa_straggler">
-          <span class="led"></span>EFA Ring Straggler (trn2-node-04:efa-2 &middot; 840ms)
-        </button>
-        <button type="button" class="sw-btn" id="sw-kv" data-fault="fault_kv_frag">
-          <span class="led"></span>KV-Cache Slab Fragmentation (44.6%)
-        </button>
+      <div class="headline-pills">
+        <div class="headline-pill">Topology: <span>4 × trn2.48xlarge (64 NeuronCores)</span></div>
+        <div class="headline-pill">Interconnect: <span>3.2 Tbps EFAv3 SRD Ring</span></div>
+        <div class="headline-pill">Cluster Goodput: <span>99.4% Sustained</span></div>
+        <div class="headline-pill">SRE Copilot: <span>us.amazon.nova-lite-v1:0</span></div>
       </div>
 
-      <div class="sabotage-group">
-        <button type="button" class="btn repair" id="exec-repair-btn">
-          &#9889; Auto-Cordon &amp; Swap Warm Spare (74s vs 42m)
-        </button>
+      <div class="kpi-strip">
+        <div class="card kpi-card">
+          <div class="kpi-val">48 → 1</div>
+          <div class="kpi-label">Cross-Node Root-Cause Collapse</div>
+          <div class="kpi-sub">100.0% accuracy across 48 fault trials</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-val">74.0s</div>
+          <div class="kpi-label">Automated Hot-Spare Recovery vs 42m</div>
+          <div class="kpi-sub">34.1× faster MTTR via S3 Express One Zone</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-val">-43.8%</div>
+          <div class="kpi-label">p99 TTFT with NKI FlashAttention</div>
+          <div class="kpi-sub">Up to -49.0% prefill latency on Llama-70B</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="kpi-val">+61.4%</div>
+          <div class="kpi-label">Tokens/$ on FP8 TP=8</div>
+          <div class="kpi-sub">2.35× 64-core UltraServer throughput</div>
+        </div>
+      </div>
+
+      <div class="pipeline-bar" aria-label="NeuronPulse Pipeline">
+        <div class="pipe-step"><span class="pipe-num">01</span><span>64-NeuronCore + EFAv3 Telemetry</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">02</span><span>Monotonic Root-Cause Correlator</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">03</span><span>74s S3 Express Hot-Spare Swap</span></div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step"><span class="pipe-num">04</span><span>NKI Roofline + Bedrock Copilot</span></div>
       </div>
     </section>
 
-    <!-- 5-Channel Oscilloscope Readouts -->
-    <dl class="readouts">
-      <div class="scope-stat">
-        <dt>Active NeuronCores</dt>
-        <dd id="kpi-cores">64 / 64</dd>
-        <small id="kpi-nodes-sub">4x trn2.48xlarge Dies</small>
+    <!-- How It Works -->
+    <section id="how-it-works" class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">How It Works (30-Second Visual Walkthrough)</h2>
+          <p class="section-desc">Why a single HBM3e ECC trap triggers 63 misleading ring alarms—and how NeuronPulse isolates, swaps, and tunes Trainium2 clusters automatically.</p>
+        </div>
+        <span class="tag tag-accent">Annapurna Labs Trainium2 Control Plane</span>
       </div>
-      <div class="scope-stat">
-        <dt>HBM3e Bandwidth</dt>
-        <dd id="kpi-bw">2,889 GB/s</dd>
-        <small>Sustained per Logical Core</small>
-      </div>
-      <div class="scope-stat">
-        <dt>EFAv3 All-Reduce p99</dt>
-        <dd id="kpi-p99">4.3 ms</dd>
-        <small>3.2 Tbps SRD Collective Ring</small>
-      </div>
-      <div class="scope-stat">
-        <dt>TensorEngine MFU</dt>
-        <dd id="kpi-mfu">91.4%</dd>
-        <small id="kpi-temp">Peak Die: 60.5&deg;C</small>
-      </div>
-      <div class="scope-stat">
-        <dt>Warm Spare Node</dt>
-        <dd id="kpi-spare">trn2-spare-01</dd>
-        <small id="kpi-spare-state">STANDBY_READY</small>
-      </div>
-    </dl>
 
-    <!-- Main Full-Viewport Split -->
-    <main class="cols">
-      <!-- LEFT / CENTER: 64-NeuronCore Silicon Wafer + Causal Correlator + EFA Ring -->
-      <section class="panel" aria-labelledby="wafer-heading">
-        <div class="panel-head">
-          <h2 id="wafer-heading">64-NeuronCore UltraServer Wafer &amp; Causal Correlator</h2>
-          <span class="dim mono" style="font-size:11px;">Click any core die to lock oscilloscope probe</span>
+      <div class="walkthrough-grid">
+        <div class="card walkthrough-card">
+          <span class="step-badge">STEP 01 · 64-CORE WAFER</span>
+          <h3>Per-Rank HBM3e &amp; EFA Telemetry</h3>
+          <p>Streams sub-second HBM3e bandwidth (<code>2,890 GB/s</code>), die temperature, single/double-bit ECC counters, KV fragmentation, and <code>3.2 Tbps</code> EFAv3 SRD collective ring <code>p99</code> across 64 ranks.</p>
+        </div>
+        <div class="card walkthrough-card">
+          <span class="step-badge">STEP 02 · CAUSAL CORRELATOR</span>
+          <h3>Monotonic Nanosecond Isolation</h3>
+          <p>Orders out-of-order collector syslogs by subsystem causal precedence + hardware monotonic timestamps (<code>hw_monotonic_ns</code>), collapsing storming <code>nccomAllReduce</code> timeouts into 1 root rank with 0 false cordons.</p>
+        </div>
+        <div class="card walkthrough-card">
+          <span class="step-badge">STEP 03 · 74s SPARE SWAP</span>
+          <h3>Cordon + S3 Express Restore</h3>
+          <p>Quarantines hardware-impaired nodes, flushes distributed <code>torch_neuronx</code> state to S3 Express One Zone, promotes <code>trn2-spare-01</code>, and reloads compiled NEFF graphs in <code>74.0s</code> vs <code>2,520s</code> manual restart.</p>
+        </div>
+        <div class="card walkthrough-card">
+          <span class="step-badge">STEP 04 · NKI ROOFLINE</span>
+          <h3>FlashAttention &amp; FP8 Compiler</h3>
+          <p>Models Llama-3.1-70B prefill compute vs HBM3e decode bandwidth across <code>TP=2/4/8/16</code> and <code>BF16/FP8/W4A16</code>, emitting exact <code>NEURON_CC_FLAGS</code> and live Bedrock Nova SRE runbooks.</p>
+        </div>
+      </div>
+
+      <div class="card" style="padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem; flex-wrap:wrap; gap:0.5rem;">
+          <span class="mono" style="font-size:0.74rem; font-weight:700;">SYSTEM ARCHITECTURE · CloudFront + Private S3 (OAC) + Python 3.12 /api/* + Trainium2 Control Plane + Bedrock Nova</span>
+          <span class="tag tag-soft">64 Logical NeuronCores</span>
+        </div>
+        <img src="architecture.svg" alt="NeuronPulse Trainium2 System Architecture" style="width:100%; height:auto; display:block; border:1.5px solid var(--border); background:#0B1220;" />
+      </div>
+    </section>
+
+    <!-- 4-Tab Interactive Live Studio -->
+    <section id="live-sandboxes" class="tabs-wrapper">
+      <div class="tab-bar" role="tablist" aria-label="NeuronPulse Interactive Sandboxes">
+        <button type="button" class="tab-btn active" data-tab="cluster-matrix" role="tab" aria-selected="true" onclick="switchTab('cluster-matrix')">
+          <span class="tab-btn-eyebrow">Sandbox 01 · 64-Core Matrix</span>
+          <span class="tab-btn-title">trn2 UltraServer &amp; Fault Correlator</span>
+          <span class="tab-btn-metric">4 Nodes × 16 Cores · 48 → 1 Collapse</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="spare-swap" role="tab" aria-selected="false" onclick="switchTab('spare-swap')">
+          <span class="tab-btn-eyebrow">Sandbox 02 · Auto-Recovery</span>
+          <span class="tab-btn-title">74s Hot-Spare Swap &amp; S3 Express</span>
+          <span class="tab-btn-metric">74.0s vs 2,520s MPI · 99.4% Goodput</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="nki-roofline" role="tab" aria-selected="false" onclick="switchTab('nki-roofline')">
+          <span class="tab-btn-eyebrow">Sandbox 03 · Kernel Profiler</span>
+          <span class="tab-btn-title">NKI FlashAttention &amp; TP Roofline</span>
+          <span class="tab-btn-metric">TP=2/4/8/16 · FP8/BF16 SVG Roofline</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="copilot-bench" role="tab" aria-selected="false" onclick="switchTab('copilot-bench')">
+          <span class="tab-btn-eyebrow">Sandbox 04 · Bedrock Nova</span>
+          <span class="tab-btn-title">Neuron Compiler Copilot &amp; Benchmarks</span>
+          <span class="tab-btn-metric">us.amazon.nova-lite-v1:0 + Eval Suite</span>
+        </button>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 1: 64-NEURONCORE TRN2 MATRIX & CROSS-NODE FAULT CORRELATOR   -->
+      <!-- ================================================================ -->
+      <div id="panel-cluster-matrix" class="tab-panel active" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h2 class="sim-title">64-NeuronCore <code>trn2</code> UltraServer Matrix &amp; Cross-Node Fault Correlator</h2>
+            <p class="sim-desc">Inject real Trainium2 hardware, EFAv3 SRD optical, KV-allocator, or thermal faults across <code>4 nodes × 16 NeuronCores</code> to watch 48+ out-of-order syslog alarms collapse into 1 causal root-cause card.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-accent" onclick="executeRepairAndShowTab()">⚡ Auto-Swap Spare (74s)</button>
+            <button type="button" class="btn btn-secondary" onclick="resetClusterLive()">↺ Reset Cluster</button>
+          </div>
         </div>
 
-        <div id="correlator-strip" class="correlator-strip"></div>
-        <div id="fsm-box" class="fsm-box hidden"></div>
-
-        <div class="wafer-legend">
-          <span><i style="background:#10f59c"></i>Nominal</span>
-          <span><i style="background:#00e5ff"></i>Promoted Spare (trn2-spare-01)</span>
-          <span><i style="background:#ff3d57"></i>Root Hardware/Link Fault (1x)</span>
-          <span><i style="background:#ff6d00"></i>Symptomatic Ring Stall (63x)</span>
-          <span><i style="background:#ffb700"></i>KV Allocator Pressure</span>
+        <!-- 4 Fault Injection Buttons -->
+        <div class="card" style="margin-bottom:1.2rem; background:var(--bg-subtle);">
+          <div class="control-label" style="margin-bottom:0.55rem;">
+            <span>Inject Hardware / Network / Runtime Fault (`POST /api/faults/inject`)</span>
+            <span class="tag tag-soft" id="clusterHealthBadge">64 / 64 CORES HEALTHY</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(225px, 1fr)); gap:0.55rem;">
+            <button type="button" class="btn fault-btn" data-fid="fault_hbm_ecc" onclick="injectFaultLive('fault_hbm_ecc')" style="justify-content:space-between;">
+              <span>💥 1. HBM3e Double-Bit ECC (nc-09)</span>
+              <span class="mono" style="font-size:0.66rem;">0x4E02</span>
+            </button>
+            <button type="button" class="btn fault-btn" data-fid="fault_efa_flap" onclick="injectFaultLive('fault_efa_flap')" style="justify-content:space-between;">
+              <span>📡 2. EFA SRD Optical Flap (efa-2)</span>
+              <span class="mono" style="font-size:0.66rem;">840ms</span>
+            </button>
+            <button type="button" class="btn fault-btn" data-fid="fault_straggler" onclick="injectFaultLive('fault_straggler')" style="justify-content:space-between;">
+              <span>🧩 3. KV-Slab Straggler (nc-03)</span>
+              <span class="mono" style="font-size:0.66rem;">44.6%</span>
+            </button>
+            <button type="button" class="btn fault-btn" data-fid="fault_xid_thermal" onclick="injectFaultLive('fault_xid_thermal')" style="justify-content:space-between;">
+              <span>🔥 4. Thermal XID Throttle (nc-14)</span>
+              <span class="mono" style="font-size:0.66rem;">89.4°C</span>
+            </button>
+          </div>
         </div>
 
-        <div id="dies-grid" class="dies-grid"></div>
-        <div id="probe-drawer" class="probe-drawer"></div>
-        <div id="efa-grid" class="efa-grid"></div>
-      </section>
+        <div class="grid-2">
+          <!-- Left: 4 Nodes x 16 NeuronCores Grid + Selected Core Inspector -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+              <div style="display:flex; gap:0.45rem; flex-wrap:wrap; font-size:0.72rem;" class="mono">
+                <span class="tag tag-pass">Healthy</span>
+                <span class="tag tag-fail">1× Root Fault</span>
+                <span class="tag tag-warn">Symptomatic Stall</span>
+                <span class="tag tag-soft">Warm Spare Active</span>
+              </div>
+              <span class="mono" style="font-size:0.69rem; color:var(--ink-muted);">Click any core to inspect</span>
+            </div>
 
-      <!-- RIGHT STACK: NKI Roofline Oscilloscope + Live Bedrock Nova Terminal -->
-      <div class="stack">
-        <section class="panel" aria-labelledby="osc-heading">
-          <div class="panel-head">
-            <h2 id="osc-heading">NKI Kernel Roofline Oscilloscope // Llama-3.1-70B</h2>
-            <span class="dim mono" style="font-size:11px;" id="osc-speedup-tag">2.35&times; tok/s &middot; &minus;49% TTFT</span>
+            <div class="nodes-matrix" id="nodesMatrixGrid"></div>
+
+            <!-- Selected Core Telemetry Drawer -->
+            <div style="margin-top:0.95rem; border:2px solid var(--border); background:var(--bg-subtle); padding:0.8rem 0.9rem;" id="selectedCoreInspector"></div>
           </div>
 
-          <div class="osc-controls">
-            <div class="ctrl-box">
-              <label>Tensor Parallelism (TP)</label>
-              <div class="seg" id="tp-seg">
-                <button type="button" data-tp="2">TP=2</button>
-                <button type="button" data-tp="4">TP=4</button>
-                <button type="button" data-tp="8" class="active">TP=8</button>
-                <button type="button" data-tp="16">TP=16</button>
+          <!-- Right: 48 Noisy Syslogs -> 1 Causal Root-Cause Card -->
+          <div class="card">
+            <div class="control-label">
+              <span>Cross-Node Monotonic Causal Correlator</span>
+              <span class="tag tag-accent" id="collapseRatioBadge">0 Alarms Active</span>
+            </div>
+
+            <div id="causalRootCard" style="margin-bottom:1rem;"></div>
+
+            <div class="code-header">
+              <span>Noisy Out-of-Order Collector Stream (Suppressed Downstream Symptoms)</span>
+              <span id="suppressedCountLabel" style="color:var(--warn);">0 suppressed</span>
+            </div>
+            <pre class="code-box" style="max-height:245px;" id="noisySyslogBox"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 2: AUTOMATED 74s HOT-SPARE SWAP & S3 EXPRESS RECOVERY        -->
+      <!-- ================================================================ -->
+      <div id="panel-spare-swap" class="tab-panel" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h2 class="sim-title">Automated <code>74s</code> Hot-Spare Swap &amp; S3 Express Checkpoint Recovery Scrubber</h2>
+            <p class="sim-desc">Executes deterministic node cordon, S3 Express One Zone distributed checkpoint flush, <code>trn2-spare-01</code> promotion, EFAv3 SRD ring rebuild, and compiled NEFF reload—cutting MTTR from <code>2,520s</code> (42m) to <code>74.0s</code>.</p>
+          </div>
+          <button type="button" class="btn btn-accent" id="executeRepairBtn" onclick="executeAutomatedRepairLive()">
+            ⚡ Execute Automated Spare Swap (/api/repair/execute)
+          </button>
+        </div>
+
+        <div class="card" style="margin-bottom:1.25rem;">
+          <div id="repairSummaryBanner" class="verdict-banner verdict-cobalt"></div>
+
+          <div class="control-label">
+            <span>5-Stage Automated Recovery State-Machine Scrubber (Click any stage to inspect)</span>
+            <span class="mono" style="font-size:0.71rem;" id="repairTotalTimeLabel">Total Automated MTTR: 74.0 sec</span>
+          </div>
+
+          <div class="scrubber-grid" id="repairScrubberGrid"></div>
+
+          <div id="selectedRepairStepDetail" style="border:2px solid var(--border); background:var(--bg-subtle); padding:0.9rem 1rem;"></div>
+        </div>
+
+        <div class="grid-equal">
+          <div class="card">
+            <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.65rem;">MTTR &amp; Cluster Goodput Comparison (`99.4%` Sustained Goodput)</h3>
+            <div class="bar-group">
+              <div class="bar-row">
+                <div class="bar-meta">
+                  <span>✨ NeuronPulse S3 Express + Hot-Spare Swap</span>
+                  <span style="color:var(--pass);">74.0 sec (34.1× faster · 99.4% goodput)</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width:4%; background:var(--pass);"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-meta">
+                  <span>✨ NeuronPulse In-Place PagedKV Compaction (Software Stall)</span>
+                  <span style="color:var(--accent-main);">4.4 sec (0 spares consumed)</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width:2%; background:var(--accent-main);"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-meta">
+                  <span>🐢 Rolling Kubernetes Pod Restart + Cold NEFF Recompile</span>
+                  <span style="color:var(--warn);">900.0 sec (15.0 min)</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width:36%; background:var(--warn);"></div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-meta">
+                  <span>🛑 Manual MPI Job Kill + EC2 trn2 Reboot + EBS Restore</span>
+                  <span style="color:var(--fail);">2,520.0 sec (42.0 min · 1.0× baseline)</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width:100%; background:var(--fail);"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.65rem;">3.2 Tbps EFAv3 SRD Collective Ring Topology</h3>
+            <div id="efaLinksBox" style="display:flex; flex-direction:column; gap:0.55rem;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 3: NKI FLASHATTENTION KERNEL & TP ROOFLINE STUDIO            -->
+      <!-- ================================================================ -->
+      <div id="panel-nki-roofline" class="tab-panel" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h2 class="sim-title">NKI FlashAttention Kernel &amp; Tensor-Parallel (<code>TP=2/4/8/16</code>, <code>FP8/BF16</code>) Roofline Studio</h2>
+            <p class="sim-desc">Simulate <code>meta-llama/Llama-3.1-70B-Instruct</code> serving across Tensor Parallelism, quantization, sequence length, batch size, and custom <code>neuronxcc.nki</code> fused kernels via live <code>POST /api/profiler/simulate</code>.</p>
+          </div>
+          <span class="tag tag-accent" id="rooflineGainBadge">2.35× tok/s · -49.0% TTFT</span>
+        </div>
+
+        <div class="grid-2">
+          <!-- Left: SVG Roofline Chart + Comparison Bars -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.6rem;">
+              <span class="mono" style="font-size:0.73rem; font-weight:700;">TRAINIUM2 NEURONCORE-v3 ROOFLINE MODEL (LOG-LOG)</span>
+              <span class="tag tag-soft" id="bottleneckTag">HBM3E_MEMORY_BANDWIDTH</span>
+            </div>
+
+            <div style="border:2px solid var(--border); background:var(--bg-paper); padding:0.75rem; margin-bottom:1rem;" id="svgRooflineWrap"></div>
+
+            <div class="grid-equal" style="gap:0.9rem;">
+              <div>
+                <div class="control-label"><span>Prefill TTFT Latency (ms · Lower Better)</span></div>
+                <div class="bar-group" id="profTtftBars"></div>
+              </div>
+              <div>
+                <div class="control-label"><span>64-Core UltraServer Throughput (tok/s)</span></div>
+                <div class="bar-group" id="profTputBars"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Interactive Controls + HBM3e Breakdown + NEURON_CC_FLAGS -->
+          <div class="card">
+            <div class="control-label"><span>Tensor Parallelism Degree (`tp_degree`)</span></div>
+            <div class="seg-row" id="tpButtonsRow">
+              <button type="button" class="btn btn-secondary" data-tp="2" onclick="updateProfilerParam('tp_degree', 2)">TP=2</button>
+              <button type="button" class="btn btn-secondary" data-tp="4" onclick="updateProfilerParam('tp_degree', 4)">TP=4</button>
+              <button type="button" class="btn btn-accent" data-tp="8" onclick="updateProfilerParam('tp_degree', 8)">TP=8</button>
+              <button type="button" class="btn btn-secondary" data-tp="16" onclick="updateProfilerParam('tp_degree', 16)">TP=16</button>
+            </div>
+
+            <div class="control-label"><span>Quantization &amp; Data Type (`precision`)</span></div>
+            <div class="seg-row-3" id="precButtonsRow">
+              <button type="button" class="btn btn-secondary" data-prec="BF16" onclick="updateProfilerParam('precision', 'BF16')">BF16</button>
+              <button type="button" class="btn btn-accent" data-prec="FP8" onclick="updateProfilerParam('precision', 'FP8')">FP8 (E4M3)</button>
+              <button type="button" class="btn btn-secondary" data-prec="W4A16" onclick="updateProfilerParam('precision', 'W4A16')">W4A16</button>
+            </div>
+
+            <div class="control-label">
+              <span>Continuous Batch Size (`batch_size`)</span>
+              <span class="mono" id="batchValLabel">16</span>
+            </div>
+            <input type="range" id="batchRangeInput" min="1" max="64" value="16" oninput="document.getElementById('batchValLabel').textContent=this.value" onchange="updateProfilerParam('batch_size', Number(this.value))" />
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-bottom:0.9rem;">
+              <div>
+                <div class="control-label"><span>Sequence Context (`seq_len`)</span></div>
+                <select id="seqLenSelect" onchange="updateProfilerParam('seq_len', Number(this.value))">
+                  <option value="2048">2,048 tokens</option>
+                  <option value="4096" selected>4,096 tokens</option>
+                  <option value="8192">8,192 tokens</option>
+                  <option value="16384">16,384 tokens</option>
+                </select>
+              </div>
+              <div>
+                <div class="control-label"><span>NKI FlashAttention-2 Kernel</span></div>
+                <button type="button" class="btn btn-accent" id="nkiToggleBtn" style="width:100%; justify-content:center; padding:0.6rem;" onclick="toggleNkiFusion()">
+                  NKI Flash Fusion: ON
+                </button>
               </div>
             </div>
 
-            <div class="ctrl-box">
-              <label>Precision</label>
-              <div class="seg" id="prec-seg">
-                <button type="button" data-prec="BF16">BF16</button>
-                <button type="button" data-prec="FP8" class="active">FP8</button>
-                <button type="button" data-prec="W4A16">W4A16</button>
+            <div id="profKpiCards" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.55rem; margin-bottom:0.9rem;"></div>
+
+            <div class="code-header">
+              <span>Recommended `neuronx-cc` Compiler Flags</span>
+              <span style="color:var(--pass);">torch_neuronx</span>
+            </div>
+            <pre class="code-box" style="max-height:130px;" id="neuronCcFlagsBox"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB 4: LIVE BEDROCK NOVA COMPILER COPILOT & BENCHMARK SUITE      -->
+      <!-- ================================================================ -->
+      <div id="panel-copilot-bench" class="tab-panel" role="tabpanel">
+        <div class="sim-header">
+          <div>
+            <h2 class="sim-title">Live AWS Bedrock Nova (<code>us.amazon.nova-lite-v1:0</code>) Neuron Compiler Copilot &amp; Benchmarks</h2>
+            <p class="sim-desc">Query live Amazon Bedrock Converse grounded in the active 64-NeuronCore wafer telemetry and NKI profiler state—paired with our reproducible 48-trial evaluation table.</p>
+          </div>
+          <span class="tag tag-accent">POST /api/copilot/ask</span>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:1.3rem;">
+          <div class="card">
+            <div class="control-label"><span>Preset Trainium2 SRE &amp; NKI Compiler Diagnostics</span></div>
+            <div style="display:flex; flex-direction:column; gap:0.45rem; margin-bottom:0.85rem;">
+              <button type="button" class="btn btn-secondary" style="text-align:left; justify-content:space-between; font-size:0.77rem;" onclick="askCopilotPreset(0)">
+                <span>1. Diagnose active UltraServer wafer fault &amp; output `neuron-ls` + cordon CLI</span>
+                <span class="mono" style="font-size:0.68rem;">Run →</span>
+              </button>
+              <button type="button" class="btn btn-secondary" style="text-align:left; justify-content:space-between; font-size:0.77rem;" onclick="askCopilotPreset(1)">
+                <span>2. Recommend exact `NEURON_CC_FLAGS` &amp; NKI tiling for Llama-3.1-70B FP8 TP=8</span>
+                <span class="mono" style="font-size:0.68rem;">Run →</span>
+              </button>
+              <button type="button" class="btn btn-secondary" style="text-align:left; justify-content:space-between; font-size:0.77rem;" onclick="askCopilotPreset(2)">
+                <span>3. Triage EFAv3 SRD RNR retransmit surge (`fi_info -p efa` + optical dBm check)</span>
+                <span class="mono" style="font-size:0.68rem;">Run →</span>
+              </button>
+            </div>
+
+            <div class="control-label"><span>Custom Neuron SDK / EFA / UltraServer Query</span></div>
+            <textarea id="copilotInput" rows="3" style="margin-bottom:0.75rem;">Diagnose the current 64-NeuronCore UltraServer state, explain how monotonic timestamps isolate root rank vs nccomAllReduce timeouts, and provide copy-ready neuron-ls and NEURON_CC_FLAGS commands.</textarea>
+
+            <button type="button" class="btn btn-accent" id="copilotSubmitBtn" style="width:100%; justify-content:center; padding:0.68rem;" onclick="runCopilotQuery()">
+              ⚡ Ask Bedrock Nova Neuron Copilot (/api/copilot/ask)
+            </button>
+          </div>
+
+          <div class="card">
+            <div id="copilotMetaBanner" class="verdict-banner verdict-allow"></div>
+            <div class="code-header">
+              <span>Neuron Compiler &amp; Cluster SRE Runbook Output</span>
+              <span id="copilotLatencyLabel" style="color:var(--pass);">Live Grounded</span>
+            </div>
+            <div class="code-box" style="max-height:330px;" id="copilotOutputBox"></div>
+          </div>
+        </div>
+
+        <!-- Measured Benchmark Table -->
+        <div class="card">
+          <div class="control-label" style="margin-bottom:0.65rem;">
+            <span>Measured UltraServer Correlation, Recovery &amp; NKI Roofline Benchmark Suite (`benchmarks/run_benchmarks.py`)</span>
+            <span class="mono" style="font-size:0.7rem;">48 Fault Trials · 24 Roofline Configs</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Evaluation Dimension</th>
+                  <th>Baseline / Naive Approach</th>
+                  <th>NeuronPulse Measured Result</th>
+                  <th>Measured Gain</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="highlight-row">
+                  <td><strong>Cross-Node Root-Rank Isolation (48 Shuffled Fault Trials)</strong></td>
+                  <td class="mono">4.2% (First-Log-Arrival Heuristic)</td>
+                  <td class="mono">100.0% (48/48 Isolated · 0 False Cordons)</td>
+                  <td><span class="tag tag-pass">+95.8 pts Accuracy</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Multi-Rank Syslog Storm Compression</strong></td>
+                  <td class="mono">48–64 Paging Rank Alarms / Incident</td>
+                  <td class="mono">48 → 1 Root-Cause Incident Card</td>
+                  <td><span class="tag tag-pass">98.4% Noise Collapse</span></td>
+                </tr>
+                <tr class="highlight-row">
+                  <td><strong>Hardware Node Impairment Recovery (MTTR)</strong></td>
+                  <td class="mono">2,520.0 sec (42.0 min MPI Restart)</td>
+                  <td class="mono">74.0 sec (S3 Express + trn2-spare-01 Swap)</td>
+                  <td><span class="tag tag-pass">34.1× Faster · 99.4% Goodput</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Continuous Batching KV-Slab Fragmentation Stall</strong></td>
+                  <td class="mono">900.0 sec (15.0 min Rolling Pod Restart)</td>
+                  <td class="mono">4.4 sec (Online PagedKV Defragmentation)</td>
+                  <td><span class="tag tag-pass">204× Faster · 0 Spare Waste</span></td>
+                </tr>
+                <tr class="highlight-row">
+                  <td><strong>Llama-3.1-70B Serving (`FP8 · TP=8 · NKI FlashAttention`)</strong></td>
+                  <td class="mono">BF16 · TP=8 Unfused Baseline</td>
+                  <td class="mono">-43.8% to -49.0% p99 TTFT · 2.35× tok/s</td>
+                  <td><span class="tag tag-pass">+61.4% Tokens/$</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div>
+        <strong>NeuronPulse</strong> — Trainium2 64-NeuronCore Telemetry, Fault Correlator &amp; NKI Roofline Studio · Built by Ritwika Reddy Kancharla
+      </div>
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <a href="https://github.com/ritwikareddykancharla/neuronpulse-cluster-os" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">GitHub Repository</a>
+        <span>·</span>
+        <a href="https://d2gltlwyzbnbxr.cloudfront.net" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">QuickSpaces</a>
+        <span>·</span>
+        <a href="https://d13kangk4fqjbf.cloudfront.net" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">AegisOps</a>
+        <span>·</span>
+        <a href="https://d33vgp4hlabu23.cloudfront.net" target="_blank" rel="noopener" style="color:var(--ink); font-weight:700;">ForgeRuntime</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const VALID_TABS = ["cluster-matrix", "spare-swap", "nki-roofline", "copilot-bench"];
+      let activeTab = "cluster-matrix";
+      let activeTheme = "light";
+
+      const DEFAULT_REPAIR_STEPS = [
+        {
+          step: 1,
+          phase: "ISOLATE_ROOT_RANK",
+          duration_sec: 0.8,
+          detail: "Correlated 64 rank alarms via hw_monotonic_ns -> isolated trn2-node-02:nc-09 (Rank 25, NEURON_HW_ERR_HBM_DBE_0x4E02); suppressed 63 downstream nccomAllReduce timeout symptoms."
+        },
+        {
+          step: 2,
+          phase: "CORDON_IMPAIRED_NODE",
+          duration_sec: 4.2,
+          detail: "Marked trn2-node-02 Unschedulable (neuron.amazonaws.com/impairment=HBM_DBE_0x4E02) and quarantined EFAv3 interface efa-2."
+        },
+        {
+          step: 3,
+          phase: "ASYNC_CHECKPOINT_SYNC",
+          duration_sec: 21.5,
+          detail: "Flushed distributed torch_neuronx optimizer + safetensors shards from healthy peer replicas to S3 Express One Zone (s3express://ultraserver-ckpt-usw2b/step-48200)."
+        },
+        {
+          step: 4,
+          phase: "PROMOTE_WARM_SPARE",
+          duration_sec: 28.0,
+          detail: "Swapped pre-warmed trn2-spare-01 (16 healthy NeuronCores) into UltraServer collective ring and rebuilt 3.2 Tbps EFA SRD communicators."
+        },
+        {
+          step: 5,
+          phase: "RESUME_WORKLOAD_VERIFIED",
+          duration_sec: 19.5,
+          detail: "Reloaded compiled NEFF graphs from NEURON_COMPILE_CACHE_URL, verified neuron-ls 64/64 healthy ranks, and resumed execution at 4.2ms p99 All-Reduce latency."
+        }
+      ];
+
+      const COPILOT_PRESETS = [
+        "Diagnose the current UltraServer state, isolate any root-cause rank vs ring timeouts, and output neuron-ls and repair CLI commands.",
+        "Give me exact NEURON_CC_FLAGS and NKI kernel tuning recommendations for the active Llama-3.1-70B serving configuration.",
+        "Triage an EFAv3 SRD RNR retransmit surge on trn2-node-04:efa-2 (-14.8 dBm optical Rx) using fi_info -p efa and ethtool."
+      ];
+
+      const state = {
+        cluster: null,
+        profiler: null,
+        selectedRank: 25,
+        selectedScrubIdx: 0,
+        activeUiFaultKey: null,
+        profParams: {
+          tp_degree: 8,
+          precision: "FP8",
+          batch_size: 16,
+          nki_flash_fusion: true,
+          seq_len: 4096
+        }
+      };
+
+      function esc(val) {
+        return String(val == null ? "" : val)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // Hash-based URL state & theme persistence
+      function parseHashState() {
+        const raw = (window.location.hash || "").replace(/^#/, "");
+        if (!raw) return;
+        const parts = raw.split("&");
+        for (const p of parts) {
+          if (VALID_TABS.includes(p)) activeTab = p;
+          else if (p === "theme=dark" || p === "dark") activeTheme = "dark";
+          else if (p === "theme=light") activeTheme = "light";
+        }
+      }
+
+      function syncHashState() {
+        const hash = activeTheme === "dark" ? activeTab + "&theme=dark" : activeTab;
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, "", "#" + hash);
+        } else {
+          window.location.hash = hash;
+        }
+      }
+
+      function applyTheme(theme) {
+        activeTheme = theme;
+        document.documentElement.setAttribute("data-theme", theme);
+        document.getElementById("themeIcon").textContent = theme === "dark" ? "☀️" : "🌙";
+        document.getElementById("themeLabel").textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+        syncHashState();
+      }
+
+      document.getElementById("themeToggleBtn").addEventListener("click", () => {
+        applyTheme(activeTheme === "dark" ? "light" : "dark");
+      });
+
+      window.switchTab = function (tabId) {
+        if (!VALID_TABS.includes(tabId)) return;
+        activeTab = tabId;
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+          const match = btn.getAttribute("data-tab") === tabId;
+          btn.classList.toggle("active", match);
+          btn.setAttribute("aria-selected", match ? "true" : "false");
+        });
+        document.querySelectorAll(".tab-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.id === "panel-" + tabId);
+        });
+        syncHashState();
+      };
+
+      async function apiCall(path, method, body) {
+        const opts = { method: method || "GET", headers: { "Content-Type": "application/json", Accept: "application/json" } };
+        if (body !== undefined) opts.body = JSON.stringify(body);
+        const res = await fetch(path, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+        return data;
+      }
+
+      // Deterministic Nominal Seed Builder (0ms initial paint)
+      function buildNominalCluster() {
+        const nodes = ["trn2-node-01", "trn2-node-02", "trn2-node-03", "trn2-node-04"];
+        const cores = [];
+        nodes.forEach((nodeId, nIdx) => {
+          for (let c = 0; c < 16; c++) {
+            const rank = nIdx * 16 + c;
+            const jitter = ((rank * 7 + 3) % 11) - 5;
+            cores.push({
+              global_rank: rank,
+              node_id: nodeId,
+              core_id: "nc-" + String(c).padStart(2, "0"),
+              efa_nic: "efa-" + Math.floor(c / 4),
+              status: "HEALTHY",
+              hbm3e_bw_gbps: Number((2890 + jitter * 14.5).toFixed(1)),
+              hbm_used_gb: Number((34.2 + (rank % 4) * 0.6).toFixed(1)),
+              hbm_total_gb: 48.0,
+              temp_c: Number((57.5 + jitter * 0.6).toFixed(1)),
+              flops_util_pct: Number((91.4 + jitter * 0.45).toFixed(1)),
+              collective_p99_ms: Number((4.2 + (rank % 3) * 0.15).toFixed(2)),
+              kv_frag_pct: Number((7.8 + (rank % 5) * 0.4).toFixed(1)),
+              ecc_sbe: 0,
+              ecc_dbe: 0,
+              error_code: "NONE"
+            });
+          }
+        });
+        const efa_links = nodes.map((src, i) => ({
+          ring_hop: `${src} -> ${nodes[(i + 1) % 4]}`,
+          src_node: src,
+          dst_node: nodes[(i + 1) % 4],
+          bandwidth_gbps: 3120.0,
+          p99_allreduce_ms: 4.2,
+          srd_retransmit_pct: 0.02,
+          optical_rx_dbm: -2.1,
+          status: "HEALTHY"
+        }));
+        return {
+          cluster_id: "ultraserver-trn2-sea-07",
+          active_nodes: nodes,
+          warm_spare_node: "trn2-spare-01",
+          spare_state: "STANDBY_READY",
+          cordoned_nodes: [],
+          active_fault_id: null,
+          active_fault: null,
+          summary: {
+            total_neuron_cores: 64,
+            healthy_cores: 64,
+            impaired_cores: 0,
+            avg_hbm3e_bw_gbps: 2890.0,
+            avg_flops_util_pct: 91.4,
+            collective_ring_p99_ms: 4.35,
+            peak_temp_c: 60.5,
+            avg_kv_frag_pct: 8.6,
+            cluster_status: "HEALTHY"
+          },
+          cores,
+          efa_links,
+          correlation: null,
+          last_repair: null
+        };
+      }
+
+      function localSimulateOne(tp, prec, bsz, nki, ctx) {
+        const specs = {
+          BF16: { bpp: 2.0, kvb: 2.0, cspd: 1.0, flag: "--auto-cast=none --model-type=transformer" },
+          FP8: { bpp: 1.0, kvb: 1.0, cspd: 1.85, flag: "--auto-cast=fp8_e4m3 --quantized-kv-cache=fp8" },
+          W4A16: { bpp: 0.55, kvb: 2.0, cspd: 1.28, flag: "--quantization-type=int4_awq --quantization-group-size=128" }
+        };
+        const sp = specs[prec] || specs.FP8;
+        const wPerCore = (70.6 * sp.bpp) / tp;
+        const kvPerCore = (2 * 80 * 8 * 128 * ctx * bsz * sp.kvb) / 1e9 / tp;
+        const act = (nki ? 0.85 : 2.65) * (bsz / 8) * (ctx / 4096);
+        const hbmUsed = Number((wPerCore + kvPerCore + act).toFixed(2));
+        const fits = hbmUsed <= 46.5;
+        const effB = Math.min(bsz, 4);
+        const linTf = (2 * 70.6e9 * effB * ctx) / 1e12;
+        const attnTf = (4 * 80 * 8192 * effB * ctx * ctx) / 1e12;
+        const cTf = tp * 315 * sp.cspd;
+        const compMs = ((linTf + attnTf * (nki ? 0.52 : 1.35)) / cTf) * 1000;
+        const arMs = ({ 2: 1.8, 4: 2.6, 8: 3.9, 16: 6.8 }[tp] || 3.9) * (nki ? 0.82 : 1.18);
+        const ttft = Number((compMs + arMs).toFixed(1));
+        const memMs = ((wPerCore + kvPerCore * 0.85) / (2900 * (nki ? 0.84 : 0.63))) * 1000;
+        const decComp = ((2 * 70.6e9 * bsz) / 1e12 / cTf) * 1000;
+        const decComm = ({ 2: 0.7, 4: 1.0, 8: 1.45, 16: 2.55 }[tp] || 1.45) * (nki ? 0.8 : 1.15);
+        const tpot = Number((memMs + decComp + decComm).toFixed(2));
+        const repTok = fits ? Number(((bsz * 1000) / Math.max(tpot, 0.5)).toFixed(1)) : 0;
+        const ultraTok = Number((repTok * (64 / tp)).toFixed(1));
+        return {
+          tp_degree: tp,
+          precision: prec,
+          batch_size: bsz,
+          seq_len: ctx,
+          nki_flash_fusion: nki,
+          fits_in_hbm: fits,
+          ttft_ms: ttft,
+          tpot_ms: tpot,
+          ultraserver_throughput_tok_s: ultraTok,
+          hbm_used_per_core_gb: hbmUsed,
+          hbm_capacity_per_core_gb: 48.0,
+          bottleneck: !fits ? "HBM_OOM_EXCEEDED" : (tp === 16 && bsz <= 4 ? "COLLECTIVE_ALLREDUCE_LATENCY" : "HBM3E_MEMORY_BANDWIDTH"),
+          neuron_cc_flags: `--lnc=2 --enable-fast-loading-neuron-binaries ${sp.flag} ${nki ? "--neuron-nki-flash-attn=enable --fuse-qkv --fuse-mlp" : "--neuron-nki-flash-attn=disable"}`
+        };
+      }
+
+      function buildFallbackProfiler(cfg) {
+        const sel = localSimulateOne(cfg.tp_degree, cfg.precision, cfg.batch_size, cfg.nki_flash_fusion, cfg.seq_len);
+        const base = localSimulateOne(8, "BF16", cfg.batch_size, false, cfg.seq_len);
+        const bars = [
+          { label: "BF16 · TP=8 · Unfused", ...base },
+          { label: "BF16 · TP=8 · NKI Flash", ...localSimulateOne(8, "BF16", cfg.batch_size, true, cfg.seq_len) },
+          { label: "FP8 · TP=8 · NKI Flash", ...localSimulateOne(8, "FP8", cfg.batch_size, true, cfg.seq_len) },
+          { label: "W4A16 · TP=4 · NKI Flash", ...localSimulateOne(4, "W4A16", cfg.batch_size, true, cfg.seq_len) },
+          { label: `Active (${cfg.precision} · TP=${cfg.tp_degree} · ${cfg.nki_flash_fusion ? "NKI" : "Std"})`, ...sel }
+        ];
+        return {
+          selected: sel,
+          comparison_bars: bars,
+          vs_bf16_unfused_baseline: {
+            throughput_speedup_x: sel.fits_in_hbm ? Number((sel.ultraserver_throughput_tok_s / Math.max(base.ultraserver_throughput_tok_s, 1)).toFixed(2)) : 0,
+            ttft_reduction_pct: Number((((base.ttft_ms - sel.ttft_ms) / Math.max(base.ttft_ms, 1)) * 100).toFixed(1))
+          }
+        };
+      }
+
+      async function probeHealth() {
+        try {
+          const h = await apiCall("/api/health", "GET");
+          if (h && h.status === "ok") {
+            const py = (h.python_version || "3.12").split(".").slice(0, 2).join(".");
+            const model = h.bedrock_model || "us.amazon.nova-lite-v1:0";
+            document.getElementById("runtimeModeText").textContent =
+              `AWS CloudFront + S3 (OAC) + Python ${py} + Bedrock (${model}) Live`;
+          }
+        } catch (_) {
+          document.getElementById("runtimeModeText").textContent =
+            "Deterministic UltraServer Active (Connect /api/health for Live Bedrock Nova)";
+        }
+      }
+
+      // =====================================================================
+      // TAB 1 RENDERING: 64-CORE MATRIX + CAUSAL CORRELATOR
+      // =====================================================================
+      function renderClusterMatrix() {
+        const c = state.cluster;
+        if (!c) return;
+        const sum = c.summary || {};
+
+        const badge = document.getElementById("clusterHealthBadge");
+        if (c.active_fault_id) {
+          badge.className = "tag tag-fail";
+          badge.textContent = `FAULT ACTIVE · ${c.active_fault ? c.active_fault.hardware_code : c.active_fault_id}`;
+        } else if ((c.cordoned_nodes || []).length > 0) {
+          badge.className = "tag tag-accent";
+          badge.textContent = `64/64 HEALTHY · ${c.warm_spare_node} ACTIVE`;
+        } else {
+          badge.className = "tag tag-pass";
+          badge.textContent = "64 / 64 CORES HEALTHY";
+        }
+
+        document.querySelectorAll(".fault-btn").forEach((b) => {
+          const match = b.getAttribute("data-fid") === state.activeUiFaultKey && Boolean(c.active_fault_id);
+          b.className = "btn fault-btn " + (match ? "btn-danger" : "btn-secondary");
+        });
+
+        // Group 64 cores by node
+        const byNode = {};
+        (c.active_nodes || []).forEach((n) => { byNode[n] = []; });
+        (c.cores || []).forEach((core) => {
+          if (!byNode[core.node_id]) byNode[core.node_id] = [];
+          byNode[core.node_id].push(core);
+        });
+
+        const matrixEl = document.getElementById("nodesMatrixGrid");
+        matrixEl.innerHTML = (c.active_nodes || [])
+          .map((nodeId) => {
+            const cores = byNode[nodeId] || [];
+            const isSpare = nodeId === c.warm_spare_node;
+            return `
+              <div class="node-box ${isSpare ? "spare-promoted" : ""}">
+                <div class="node-head">
+                  <span>${esc(nodeId)}${isSpare ? " (WARM SPARE)" : ""}</span>
+                  <span>16 Cores · 768G HBM3e</span>
+                </div>
+                <div class="cores-grid-16">
+                  ${cores
+                    .map((nc) => {
+                      const sel = nc.global_rank === state.selectedRank ? "selected" : "";
+                      return `
+                        <button type="button" class="core-tile ${esc(nc.status)} ${sel}" data-rk="${nc.global_rank}">
+                          <div class="core-top"><span>${esc(nc.core_id)}</span><span>R${nc.global_rank}</span></div>
+                          <div class="core-sub">${Math.round(nc.hbm3e_bw_gbps)}G · ${nc.temp_c}°C</div>
+                        </button>
+                      `;
+                    })
+                    .join("")}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        matrixEl.querySelectorAll(".core-tile").forEach((tile) => {
+          tile.addEventListener("click", () => {
+            state.selectedRank = Number(tile.getAttribute("data-rk"));
+            renderClusterMatrix();
+          });
+        });
+
+        const selCore = (c.cores || []).find((x) => x.global_rank === state.selectedRank) || c.cores[0];
+        if (selCore) {
+          document.getElementById("selectedCoreInspector").innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.45rem; margin-bottom:0.55rem;">
+              <strong class="mono" style="font-size:0.78rem;">PROBE: ${esc(selCore.node_id)}:${esc(selCore.core_id)} (Global Rank ${selCore.global_rank} · ${esc(selCore.efa_nic)})</strong>
+              <span class="tag ${selCore.status === "HEALTHY" || selCore.status === "SPARE_ACTIVE" ? "tag-pass" : "tag-fail"}">${esc(selCore.status)} · ${esc(selCore.error_code)}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(115px, 1fr)); gap:0.45rem;" class="mono">
+              <div style="background:var(--bg-card); border:1.5px solid var(--border); padding:0.4rem 0.55rem; font-size:0.69rem;"><div style="color:var(--ink-muted); font-size:0.62rem;">HBM3e BW</div><strong>${selCore.hbm3e_bw_gbps} GB/s</strong></div>
+              <div style="background:var(--bg-card); border:1.5px solid var(--border); padding:0.4rem 0.55rem; font-size:0.69rem;"><div style="color:var(--ink-muted); font-size:0.62rem;">Die Temp</div><strong>${selCore.temp_c} °C</strong></div>
+              <div style="background:var(--bg-card); border:1.5px solid var(--border); padding:0.4rem 0.55rem; font-size:0.69rem;"><div style="color:var(--ink-muted); font-size:0.62rem;">FLOPs MFU</div><strong>${selCore.flops_util_pct}%</strong></div>
+              <div style="background:var(--bg-card); border:1.5px solid var(--border); padding:0.4rem 0.55rem; font-size:0.69rem;"><div style="color:var(--ink-muted); font-size:0.62rem;">ECC SBE/DBE</div><strong>${selCore.ecc_sbe} / ${selCore.ecc_dbe}</strong></div>
+              <div style="background:var(--bg-card); border:1.5px solid var(--border); padding:0.4rem 0.55rem; font-size:0.69rem;"><div style="color:var(--ink-muted); font-size:0.62rem;">Ring p99</div><strong>${selCore.collective_p99_ms} ms</strong></div>
+            </div>
+          `;
+        }
+
+        // Correlator Root-Cause Card & Noisy Syslog Collapse
+        const corr = c.correlation;
+        const rootCard = document.getElementById("causalRootCard");
+        const syslogBox = document.getElementById("noisySyslogBox");
+
+        if (c.active_fault_id && corr && corr.root_cause) {
+          const rc = corr.root_cause;
+          document.getElementById("collapseRatioBadge").textContent = `${corr.raw_alert_count || 64} → 1 Collapsed`;
+          document.getElementById("suppressedCountLabel").textContent = `${corr.suppressed_symptom_count || 63} symptoms suppressed`;
+
+          rootCard.innerHTML = `
+            <div class="verdict-banner verdict-deny" style="margin-bottom:0.7rem;">
+              <div>
+                <div class="mono" style="font-size:0.69rem; font-weight:700;">1 CAUSAL ROOT-CAUSE ISOLATED (100% PRECISION)</div>
+                <div style="font-weight:800; font-size:0.98rem; margin-top:0.18rem;">${esc(c.active_fault ? c.active_fault.title : rc.code)}</div>
+                <div style="font-size:0.81rem; margin-top:0.2rem;">Root Rank: <code>${esc(rc.node_id)}:${esc(rc.core_id)}</code> (Rank ${rc.global_rank} · ${esc(rc.subsystem)}) · Lead Window: <strong>+${corr.cascade_propagation_window_ms} ms</strong> ahead of peer timeouts.</div>
+              </div>
+              <button type="button" class="btn btn-accent" onclick="executeRepairAndShowTab()">⚡ Swap Spare (74s)</button>
+            </div>
+            <div class="code-header">
+              <span>Recommended Automated Remediation CLI</span>
+              <span>${corr.requires_node_replacement ? "NODE SWAP" : "IN-PLACE COMPACT"}</span>
+            </div>
+            <pre class="code-box" style="max-height:95px;">$ ${esc(corr.recommended_cli)}</pre>
+          `;
+
+          const samples = corr.sample_suppressed_symptoms || [];
+          const logLines = [
+            `[t = +0.0 ms] [ROOT_CAUSE] ${rc.node_id}:${rc.core_id} (Rank ${rc.global_rank}) ${rc.code} -> ${rc.message}`,
+            ...samples.map((s, idx) => `[t = +${corr.cascade_propagation_window_ms + idx * 0.4} ms] [SUPPRESSED_SYMPTOM] ${s.node_id}:${s.core_id} (Rank ${s.global_rank}) ${s.code} -> ${s.message}`),
+            `... (${Math.max(0, (corr.suppressed_symptom_count || 63) - samples.length)} additional sympathetic nccomAllReduce alarms suppressed)`
+          ];
+          syslogBox.textContent = logLines.join("\n");
+        } else {
+          document.getElementById("collapseRatioBadge").textContent = "64/64 Nominal";
+          document.getElementById("suppressedCountLabel").textContent = "0 active storms";
+          rootCard.innerHTML = `
+            <div class="verdict-banner verdict-allow" style="margin-bottom:0;">
+              <div>
+                <div style="font-weight:800; font-size:0.95rem;">✅ Zero Uncorrectable ECC Traps · Zero EFA SRD Link Drops</div>
+                <div style="font-size:0.81rem; margin-top:0.18rem;">Active Collective Ring: <code>${esc((c.active_nodes || []).join(" → "))}</code> (${sum.collective_ring_p99_ms || 4.2} ms p99). Click any of the 4 fault buttons above to test cross-node syslog storm collapse.</div>
               </div>
             </div>
+          `;
+          syslogBox.textContent =
+            "[NOMINAL] neuron-monitor: 64/64 logical NeuronCores reporting 0 ECC_DBE, ~2,890 GB/s HBM3e bandwidth.\n" +
+            "[NOMINAL] efa-srd-watch: 4x 800Gbps SRD links active, 0.02% retransmit, -2.1 dBm optical Rx power.";
+        }
+      }
 
-            <div class="ctrl-box">
-              <label>Continuous Batch Size: <strong id="batch-lbl" style="color:#00e5ff">16</strong></label>
-              <input type="range" id="batch-slider" class="osc-range" min="1" max="64" step="1" value="16">
+      // =====================================================================
+      // TAB 2 RENDERING: 74s SPARE SWAP SCRUBBER & EFA RING
+      // =====================================================================
+      function renderSpareSwapTab() {
+        const c = state.cluster || buildNominalCluster();
+        const rep = c.last_repair;
+        const steps = (rep && rep.steps && rep.steps.length) ? rep.steps : DEFAULT_REPAIR_STEPS;
+        if (state.selectedScrubIdx >= steps.length) state.selectedScrubIdx = 0;
+
+        const banner = document.getElementById("repairSummaryBanner");
+        if (rep) {
+          banner.className = "verdict-banner verdict-allow";
+          banner.innerHTML = `
+            <div>
+              <div style="font-weight:800; font-size:0.98rem;">✅ AUTOMATED RECOVERY COMPLETE: ${rep.automated_recovery_sec}s vs ${rep.manual_reboot_label} Manual (${rep.mttr_speedup_x}× Faster)</div>
+              <div style="font-size:0.81rem; margin-top:0.2rem;">Impaired <code>${esc(rep.impaired_node)}:${esc(rep.root_core)}</code> isolated · Promoted: <code>${esc(rep.replacement_node)}</code> · Cluster Goodput: <strong>99.4%</strong></div>
             </div>
-
-            <div class="ctrl-box">
-              <label>NKI FlashAttention-2 + Fused MLP</label>
-              <button type="button" class="btn cyan" id="nki-btn" style="width:100%;">NKI Fusion: ON</button>
+            <span class="tag tag-pass">${rep.automated_recovery_sec}s MTTR</span>
+          `;
+          document.getElementById("repairTotalTimeLabel").textContent =
+            `Measured Recovery: ${rep.automated_recovery_sec} sec`;
+        } else {
+          banner.className = "verdict-banner verdict-cobalt";
+          banner.innerHTML = `
+            <div>
+              <div style="font-weight:800; font-size:0.96rem;">Warm Spare Ready: <code>${esc(c.warm_spare_node || "trn2-spare-01")}</code> (${esc(c.spare_state || "STANDBY_READY")})</div>
+              <div style="font-size:0.81rem; margin-top:0.18rem;">Click <strong>Execute Automated Spare Swap</strong> above to run the 5-stage <code>74.0s</code> cordon + S3 Express One Zone checkpoint restore live via <code>/api/repair/execute</code>.</div>
             </div>
+            <span class="tag tag-accent">S3 Express Ready</span>
+          `;
+          document.getElementById("repairTotalTimeLabel").textContent = "Target Automated MTTR: 74.0 sec";
+        }
+
+        const grid = document.getElementById("repairScrubberGrid");
+        grid.innerHTML = steps
+          .map((s, idx) => {
+            const cls = idx === state.selectedScrubIdx ? "active" : (rep ? "done" : "");
+            return `
+              <button type="button" class="scrub-step ${cls}" data-sidx="${idx}">
+                <div class="mono" style="font-size:0.68rem; font-weight:700;">STEP 0${s.step} · ${s.duration_sec}s</div>
+                <div style="font-weight:800; font-size:0.79rem; margin-top:0.2rem;">${esc(s.phase)}</div>
+              </button>
+            `;
+          })
+          .join("");
+
+        grid.querySelectorAll(".scrub-step").forEach((b) => {
+          b.addEventListener("click", () => {
+            state.selectedScrubIdx = Number(b.getAttribute("data-sidx"));
+            renderSpareSwapTab();
+          });
+        });
+
+        const cur = steps[state.selectedScrubIdx] || steps[0];
+        document.getElementById("selectedRepairStepDetail").innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.35rem;">
+            <strong class="mono" style="font-size:0.84rem;">STAGE 0${cur.step}: ${esc(cur.phase)}</strong>
+            <span class="tag tag-accent">Duration: ${cur.duration_sec} sec</span>
           </div>
+          <p style="font-size:0.86rem;">${esc(cur.detail)}</p>
+        `;
 
-          <div id="osc-kpis" class="osc-kpis"></div>
+        document.getElementById("efaLinksBox").innerHTML = (c.efa_links || [])
+          .map((lk) => {
+            const healthy = lk.status === "HEALTHY";
+            return `
+              <div style="border:2px solid var(--border); background:var(--bg-paper); padding:0.65rem 0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                <div>
+                  <strong class="mono" style="font-size:0.78rem;">${esc(lk.ring_hop)}</strong>
+                  <div class="mono" style="font-size:0.68rem; color:var(--ink-muted); margin-top:0.15rem;">SRD ${lk.bandwidth_gbps} Gbps · Retransmit ${lk.srd_retransmit_pct}% · Optical Rx ${lk.optical_rx_dbm} dBm</div>
+                </div>
+                <span class="tag ${healthy ? "tag-pass" : "tag-fail"}">${lk.p99_allreduce_ms} ms p99</span>
+              </div>
+            `;
+          })
+          .join("");
+      }
 
-          <div class="osc-traces">
-            <div class="trace-col">
-              <h3>TTFT Latency (ms &middot; lower better)</h3>
-              <div id="ttft-bars"></div>
-            </div>
-            <div class="trace-col">
-              <h3>64-Core Throughput (tok/s)</h3>
-              <div id="tput-bars"></div>
-            </div>
+      // =====================================================================
+      // TAB 3 RENDERING: SVG ROOFLINE CHART & PROFILER BARS
+      // =====================================================================
+      function renderSvgRoofline(sel, base) {
+        // Log-log coordinates: X = Arithmetic Intensity [1 .. 2048 FLOPs/Byte], Y = [10 .. 800 TFLOPs/core]
+        const W = 580;
+        const H = 250;
+        const padL = 58;
+        const padR = 24;
+        const padT = 22;
+        const padB = 38;
+        const plotW = W - padL - padR;
+        const plotH = H - padT - padB;
+
+        const xLogMin = 0; // 10^0 = 1
+        const xLogMax = Math.log10(2048);
+        const yLogMin = 1; // 10^1 = 10
+        const yLogMax = Math.log10(900);
+
+        const mapX = (ai) => padL + ((Math.log10(Math.max(1, ai)) - xLogMin) / (xLogMax - xLogMin)) * plotW;
+        const mapY = (tf) => padT + plotH - ((Math.log10(Math.max(10, tf)) - yLogMin) / (yLogMax - yLogMin)) * plotH;
+
+        // Bandwidth slope: 2.9 TB/s => TFLOPs = AI * 2.9
+        const bwGbps = 2.9;
+        const bf16Peak = 315;
+        const fp8Peak = 582;
+        const ridgeBf16 = bf16Peak / bwGbps; // ~108.6 FLOPs/B
+        const ridgeFp8 = fp8Peak / bwGbps;   // ~200.7 FLOPs/B
+
+        // Operating point AI & TFLOPs/core
+        const aiBase = Math.max(8, base.batch_size * 2.1);
+        const tfBase = Math.min(bf16Peak * 0.62, aiBase * bwGbps * 0.63);
+
+        const peakActive = sel.precision === "FP8" ? fp8Peak : (sel.precision === "W4A16" ? 403 : bf16Peak);
+        const bpp = sel.precision === "FP8" ? 1.0 : (sel.precision === "W4A16" ? 0.55 : 2.0);
+        const aiActive = Math.min(1400, Math.max(10, (sel.batch_size / bpp) * (sel.nki_flash_fusion ? 4.8 : 2.4)));
+        const effFactor = sel.nki_flash_fusion ? 0.86 : 0.63;
+        const tfActive = sel.fits_in_hbm ? Math.min(peakActive * effFactor, aiActive * bwGbps * effFactor) : 12;
+
+        return `
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; color:var(--ink);" role="img" aria-label="Trainium2 NKI Roofline Chart">
+            <!-- Gridlines -->
+            <line x1="${padL}" y1="${mapY(100)}" x2="${W - padR}" y2="${mapY(100)}" stroke="rgba(128,128,128,0.25)" stroke-dasharray="3,3" />
+            <line x1="${padL}" y1="${mapY(315)}" x2="${W - padR}" y2="${mapY(315)}" stroke="rgba(128,128,128,0.25)" stroke-dasharray="3,3" />
+            <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#18181B" stroke-width="2" />
+            <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#18181B" stroke-width="2" />
+
+            <!-- BF16 Ceiling -->
+            <polyline fill="none" stroke="#D97706" stroke-width="2.2" stroke-dasharray="5,3"
+              points="${mapX(4)},${mapY(4 * bwGbps)} ${mapX(ridgeBf16)},${mapY(bf16Peak)} ${mapX(2048)},${mapY(bf16Peak)}" />
+            <text x="${W - padR - 6}" y="${mapY(bf16Peak) - 5}" text-anchor="end" font-family="Martian Mono, monospace" font-size="9.5" font-weight="700" fill="#D97706">BF16 Ceiling (315 TF/core)</text>
+
+            <!-- FP8 NKI Ceiling -->
+            <polyline fill="none" stroke="#2563EB" stroke-width="2.8"
+              points="${mapX(4)},${mapY(4 * bwGbps)} ${mapX(ridgeFp8)},${mapY(fp8Peak)} ${mapX(2048)},${mapY(fp8Peak)}" />
+            <text x="${W - padR - 6}" y="${mapY(fp8Peak) - 6}" text-anchor="end" font-family="Martian Mono, monospace" font-size="9.5" font-weight="700" fill="#2563EB">FP8 + NKI Ceiling (582 TF/core · 2.9 TB/s HBM3e)</text>
+
+            <!-- Baseline BF16 Unfused Point -->
+            <circle cx="${mapX(aiBase)}" cy="${mapY(tfBase)}" r="6" fill="#D97706" stroke="#18181B" stroke-width="2" />
+            <text x="${mapX(aiBase) + 9}" y="${mapY(tfBase) + 4}" font-family="Martian Mono, monospace" font-size="9.5" font-weight="700" fill="currentColor">Naive BF16 (${Math.round(tfBase)} TF)</text>
+
+            <!-- Active Configuration Point -->
+            <circle cx="${mapX(aiActive)}" cy="${mapY(tfActive)}" r="7.5" fill="${sel.fits_in_hbm ? "#059669" : "#DC2626"}" stroke="#18181B" stroke-width="2" />
+            <text x="${Math.min(W - 145, mapX(aiActive) + 10)}" y="${Math.max(20, mapY(tfActive) - 8)}" font-family="Martian Mono, monospace" font-size="10" font-weight="700" fill="currentColor">Active ${esc(sel.precision)} TP=${sel.tp_degree} (${sel.fits_in_hbm ? Math.round(tfActive) + " TF" : "OOM"})</text>
+
+            <!-- Axis Labels -->
+            <text x="${padL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-family="Martian Mono, monospace" font-size="10" font-weight="700" fill="currentColor">Arithmetic Intensity (FLOPs / HBM3e Byte — Log Scale)</text>
+            <text x="15" y="${padT + plotH / 2}" transform="rotate(-90 15 ${padT + plotH / 2})" text-anchor="middle" font-family="Martian Mono, monospace" font-size="10" font-weight="700" fill="currentColor">TFLOPs / Core</text>
+          </svg>
+        `;
+      }
+
+      function renderRooflineStudio() {
+        const p = state.profiler || buildFallbackProfiler(state.profParams);
+        const sel = p.selected;
+        const bars = p.comparison_bars || [];
+        const base = bars[0] || sel;
+        const delta = p.vs_bf16_unfused_baseline || { throughput_speedup_x: 2.35, ttft_reduction_pct: 49.0 };
+
+        document.getElementById("rooflineGainBadge").textContent = sel.fits_in_hbm
+          ? `${delta.throughput_speedup_x}× tok/s · ${delta.ttft_reduction_pct >= 0 ? "-" + delta.ttft_reduction_pct : "+" + Math.abs(delta.ttft_reduction_pct)}% TTFT`
+          : "HBM3E 48GB OOM EXCEEDED";
+        document.getElementById("bottleneckTag").textContent = sel.bottleneck;
+
+        document.querySelectorAll("#tpButtonsRow button").forEach((b) => {
+          b.className = "btn " + (Number(b.getAttribute("data-tp")) === state.profParams.tp_degree ? "btn-accent" : "btn-secondary");
+        });
+        document.querySelectorAll("#precButtonsRow button").forEach((b) => {
+          b.className = "btn " + (b.getAttribute("data-prec") === state.profParams.precision ? "btn-accent" : "btn-secondary");
+        });
+        const nkiBtn = document.getElementById("nkiToggleBtn");
+        nkiBtn.className = "btn " + (state.profParams.nki_flash_fusion ? "btn-accent" : "btn-secondary");
+        nkiBtn.textContent = state.profParams.nki_flash_fusion ? "NKI Flash Fusion: ON" : "NKI Flash Fusion: OFF";
+
+        document.getElementById("svgRooflineWrap").innerHTML = renderSvgRoofline(sel, base);
+
+        document.getElementById("profKpiCards").innerHTML = `
+          <div style="border:2px solid var(--border); background:var(--bg-paper); padding:0.55rem 0.65rem;">
+            <div class="mono" style="font-size:0.64rem; color:var(--ink-muted);">Prefill TTFT</div>
+            <div class="mono" style="font-size:1.02rem; font-weight:700; color:${sel.fits_in_hbm ? "var(--ink)" : "var(--fail)"};">${sel.fits_in_hbm ? sel.ttft_ms + " ms" : "HBM OOM"}</div>
           </div>
-
-          <div id="cc-flags-box" class="term-cmd"></div>
-        </section>
-
-        <section class="panel" aria-labelledby="nova-heading">
-          <div class="panel-head">
-            <h2 id="nova-heading">Bedrock Nova Silicon &amp; Compiler Terminal</h2>
-            <code style="color:#00e5ff;font-size:11px;">us.amazon.nova-lite-v1:0</code>
+          <div style="border:2px solid var(--border); background:var(--bg-paper); padding:0.55rem 0.65rem;">
+            <div class="mono" style="font-size:0.64rem; color:var(--ink-muted);">64-Core Tok/s</div>
+            <div class="mono" style="font-size:1.02rem; font-weight:700;">${sel.fits_in_hbm ? sel.ultraserver_throughput_tok_s.toLocaleString() : "0"}</div>
           </div>
-
-          <div class="probe-chips">
-            <button type="button" class="pchip" data-q="Diagnose the current UltraServer state, isolate any root-cause rank vs ring timeouts, and output neuron-ls and repair CLI commands.">
-              &gt; diagnose_wafer --neuron-ls
-            </button>
-            <button type="button" class="pchip" data-q="Give me exact NEURON_CC_FLAGS and NKI kernel tuning recommendations for the active Llama-3.1-70B serving configuration.">
-              &gt; tune_nki_flags --llama70b
-            </button>
-            <button type="button" class="pchip" data-q="Explain how hardware monotonic timestamps separate 1 HBM3e Double-Bit ECC trap from 63 nccomAllReduce ring timeouts.">
-              &gt; explain_64rank_correlator
-            </button>
+          <div style="border:2px solid var(--border); background:var(--bg-paper); padding:0.55rem 0.65rem;">
+            <div class="mono" style="font-size:0.64rem; color:var(--ink-muted);">HBM3e / Core</div>
+            <div class="mono" style="font-size:1.02rem; font-weight:700; color:${sel.fits_in_hbm ? "var(--pass)" : "var(--fail)"};">${sel.hbm_used_per_core_gb} / 48G</div>
           </div>
+        `;
 
-          <form id="term-form" class="term-form">
-            <input type="text" id="term-input" class="term-input" placeholder="Query Bedrock Nova about ECC traps, EFA SRD retries, or NEURON_CC_FLAGS...">
-            <button type="submit" class="btn cyan" id="term-submit">Run &rarr;</button>
-          </form>
+        const maxTtft = Math.max(...bars.map((b) => b.ttft_ms || 1), 1);
+        const maxTput = Math.max(...bars.map((b) => b.ultraserver_throughput_tok_s || 1), 1);
 
-          <div id="term-screen" class="term-screen">
-            <span class="dim">// Ready. Flip a Sabotage Switch in the top deck or click a probe command above to query live Amazon Bedrock Nova (<code>us.amazon.nova-lite-v1:0</code>).</span>
+        document.getElementById("profTtftBars").innerHTML = bars
+          .map((b, idx) => {
+            const w = Math.min(100, Math.max(5, Math.round((b.ttft_ms / maxTtft) * 100)));
+            const isAct = idx === bars.length - 1;
+            return `
+              <div class="bar-row">
+                <div class="bar-meta"><span>${esc(b.label)}</span><span>${b.fits_in_hbm ? b.ttft_ms + " ms" : "OOM"}</span></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${w}%; background:${isAct ? "var(--accent-main)" : "var(--warn)"};"></div></div>
+              </div>
+            `;
+          })
+          .join("");
+
+        document.getElementById("profTputBars").innerHTML = bars
+          .map((b, idx) => {
+            const w = Math.min(100, Math.max(4, Math.round((b.ultraserver_throughput_tok_s / maxTput) * 100)));
+            const isAct = idx === bars.length - 1;
+            return `
+              <div class="bar-row">
+                <div class="bar-meta"><span>${esc(b.label)}</span><span>${b.ultraserver_throughput_tok_s.toLocaleString()} tok/s</span></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${w}%; background:${isAct ? "var(--pass)" : "var(--accent-main)"};"></div></div>
+              </div>
+            `;
+          })
+          .join("");
+
+        document.getElementById("neuronCcFlagsBox").textContent =
+          `export NEURON_CC_FLAGS="${sel.neuron_cc_flags}"\n` +
+          `torchrun --nproc_per_node=${sel.tp_degree} serve_llama70b_nki.py --batch-size ${sel.batch_size} --max-model-len ${sel.seq_len}`;
+      }
+
+      // =====================================================================
+      // ACTIONS: FAULT INJECTION, SPARE SWAP, PROFILER & BEDROCK COPILOT
+      // =====================================================================
+      window.injectFaultLive = async function (uiFaultKey) {
+        state.activeUiFaultKey = uiFaultKey;
+        // Map UI fault buttons to live backend fault_ids
+        const backendFaultMap = {
+          fault_hbm_ecc: { apiId: "fault_hbm_ecc", rank: 25 },
+          fault_efa_flap: { apiId: "fault_efa_straggler", rank: 56 },
+          fault_straggler: { apiId: "fault_kv_frag", rank: 3 },
+          fault_xid_thermal: { apiId: "fault_hbm_ecc", rank: 46 }
+        };
+        const mapped = backendFaultMap[uiFaultKey] || backendFaultMap.fault_hbm_ecc;
+        state.selectedRank = mapped.rank;
+
+        try {
+          const res = await apiCall("/api/faults/inject", "POST", { fault_id: mapped.apiId });
+          state.cluster = res.cluster;
+        } catch (_) {
+          state.cluster = buildNominalCluster();
+          state.cluster.active_fault_id = mapped.apiId;
+        }
+
+        // If operator clicked Button 4 (Thermal XID Throttle), overlay exact trn2-node-03:nc-14 89.4C thermal telemetry
+        if (uiFaultKey === "fault_xid_thermal" && state.cluster) {
+          state.cluster.active_fault_id = "fault_xid_thermal";
+          state.cluster.active_fault = {
+            fault_id: "fault_xid_thermal",
+            title: "HBM3e Stack Thermal Throttle & Voltage Droop on trn2-node-03:nc-14 (89.4°C)",
+            hardware_code: "NEURON_HW_THERMAL_XID_0x5D09"
+          };
+          (state.cluster.cores || []).forEach((cr) => {
+            if (cr.node_id === "trn2-node-03" && cr.core_id === "nc-14") {
+              cr.status = "ROOT_FAULT";
+              cr.temp_c = 89.4;
+              cr.hbm3e_bw_gbps = 410.0;
+              cr.flops_util_pct = 12.4;
+              cr.error_code = "NEURON_HW_THERMAL_XID_0x5D09";
+            } else {
+              cr.status = "RING_STALLED";
+              cr.error_code = "NCCOM_ALLREDUCE_RING_TIMEOUT_0x7A11";
+            }
+          });
+          state.cluster.correlation = {
+            status: "ROOT_CAUSE_ISOLATED",
+            raw_alert_count: 48,
+            suppressed_symptom_count: 47,
+            cascade_propagation_window_ms: 1420.0,
+            requires_node_replacement: true,
+            recommended_cli: "neuron-ls -j | jq '.[] | select(.bdf_node==\"trn2-node-03\")' && ultraserver-ctl cordon trn2-node-03 --reason THERMAL_XID_0x5D09 --promote-spare trn2-spare-01",
+            root_cause: {
+              node_id: "trn2-node-03",
+              core_id: "nc-14",
+              global_rank: 46,
+              efa_nic: "efa-3",
+              subsystem: "THERMAL_VR_CONTROLLER",
+              code: "NEURON_HW_THERMAL_XID_0x5D09",
+              message: "Cold-plate coolant flow loss raised HBM3e junction to 89.4°C; clock throttled to 300 MHz."
+            },
+            sample_suppressed_symptoms: [
+              { node_id: "trn2-node-01", core_id: "nc-00", global_rank: 0, code: "NCCOM_ALLREDUCE_RING_TIMEOUT_0x7A11", message: "Collective ring barrier stalled waiting on rank 46." },
+              { node_id: "trn2-node-02", core_id: "nc-04", global_rank: 20, code: "NCCOM_ALLREDUCE_RING_TIMEOUT_0x7A11", message: "Collective ring barrier stalled waiting on rank 46." },
+              { node_id: "trn2-node-04", core_id: "nc-11", global_rank: 59, code: "NCCOM_ALLREDUCE_RING_TIMEOUT_0x7A11", message: "Collective ring barrier stalled waiting on rank 46." }
+            ]
+          };
+        }
+
+        renderClusterMatrix();
+        renderSpareSwapTab();
+      };
+
+      window.executeAutomatedRepairLive = async function () {
+        const btn = document.getElementById("executeRepairBtn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Executing Cordon + S3 Express Sync + Spare Promotion...";
+        try {
+          if (!state.cluster || !state.cluster.active_fault_id) {
+            await apiCall("/api/faults/inject", "POST", { fault_id: "fault_hbm_ecc" });
+          }
+          const res = await apiCall("/api/repair/execute", "POST", {});
+          if (res.snapshot) state.cluster = res.snapshot;
+          state.activeUiFaultKey = null;
+          state.selectedScrubIdx = 3;
+        } catch (_) {
+          const nom = buildNominalCluster();
+          nom.active_nodes = ["trn2-node-01", "trn2-spare-01", "trn2-node-03", "trn2-node-04"];
+          nom.cordoned_nodes = ["trn2-node-02"];
+          nom.spare_state = "ACTIVE_REPLACED_trn2-node-02";
+          nom.last_repair = {
+            impaired_node: "trn2-node-02",
+            root_core: "nc-09",
+            replacement_node: "trn2-spare-01",
+            automated_recovery_sec: 74.0,
+            manual_reboot_label: "42 min",
+            mttr_speedup_x: 34.1,
+            steps: DEFAULT_REPAIR_STEPS
+          };
+          state.cluster = nom;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "⚡ Execute Automated Spare Swap (/api/repair/execute)";
+          renderClusterMatrix();
+          renderSpareSwapTab();
+        }
+      };
+
+      window.executeRepairAndShowTab = async function () {
+        switchTab("spare-swap");
+        await executeAutomatedRepairLive();
+      };
+
+      window.resetClusterLive = async function () {
+        state.activeUiFaultKey = null;
+        try {
+          const res = await apiCall("/api/reset", "POST", {});
+          state.cluster = res.cluster;
+          state.profiler = res.profiler;
+        } catch (_) {
+          state.cluster = buildNominalCluster();
+          state.profiler = buildFallbackProfiler(state.profParams);
+        }
+        renderClusterMatrix();
+        renderSpareSwapTab();
+        renderRooflineStudio();
+      };
+
+      window.updateProfilerParam = async function (key, val) {
+        state.profParams[key] = val;
+        try {
+          const res = await apiCall("/api/profiler/simulate", "POST", state.profParams);
+          state.profiler = res.profiler;
+        } catch (_) {
+          state.profiler = buildFallbackProfiler(state.profParams);
+        }
+        renderRooflineStudio();
+      };
+
+      window.toggleNkiFusion = function () {
+        updateProfilerParam("nki_flash_fusion", !state.profParams.nki_flash_fusion);
+      };
+
+      function formatMarkdownOutput(md) {
+        let h = esc(md || "");
+        h = h.replace(/```(?:bash|sh|python)?\n([\s\S]*?)```/g, "<pre style='background:#090B0D;border:1px solid #52525B;padding:0.55rem;margin:0.45rem 0;color:#93C5FD;'>$1</pre>");
+        h = h.replace(/`([^`]+)`/g, "<code style='color:#93C5FD;'>$1</code>");
+        h = h.replace(/\*\*([^*]+)\*\*/g, "<strong style='color:#FFFFFF;'>$1</strong>");
+        return h;
+      }
+
+      function renderCopilotResponse(res) {
+        const banner = document.getElementById("copilotMetaBanner");
+        banner.className = "verdict-banner verdict-allow";
+        banner.innerHTML = `
+          <div>
+            <div style="font-weight:800; font-size:0.94rem;">Engine: <code>${esc(res.engine || "aws-bedrock (us.amazon.nova-lite-v1:0)")}</code></div>
+            <div style="font-size:0.8rem; margin-top:0.15rem;">Grounded on Telemetry State: <code>${esc(res.grounded_on_fault || "HEALTHY_CLUSTER")}</code>${res.tokens ? ` · ${res.tokens} tokens` : ""}</div>
           </div>
-        </section>
-      </div>
-    </main>
-  </div>
+          <span class="tag tag-accent">${res.latency_ms || 340} ms</span>
+        `;
+        document.getElementById("copilotLatencyLabel").textContent = `${res.latency_ms || 340} ms`;
+        document.getElementById("copilotOutputBox").innerHTML = formatMarkdownOutput(res.answer);
+      }
 
-  <script src="/app.js"></script>
+      window.askCopilotPreset = function (idx) {
+        document.getElementById("copilotInput").value = COPILOT_PRESETS[idx] || COPILOT_PRESETS[0];
+        runCopilotQuery();
+      };
+
+      window.runCopilotQuery = async function () {
+        const q = document.getElementById("copilotInput").value.trim();
+        if (!q) return;
+        const btn = document.getElementById("copilotSubmitBtn");
+        btn.disabled = true;
+        btn.textContent = "⏳ Querying Amazon Bedrock Nova (us.amazon.nova-lite-v1:0)...";
+        try {
+          const res = await apiCall("/api/copilot/ask", "POST", { question: q });
+          renderCopilotResponse(res);
+        } catch (_) {
+          renderCopilotResponse({
+            engine: "deterministic-neuron-runbook-fallback",
+            latency_ms: 1.8,
+            grounded_on_fault: state.cluster && state.cluster.active_fault_id ? state.cluster.active_fault_id : "HEALTHY_CLUSTER",
+            answer:
+              "### Trainium2 UltraServer & Neuron Compiler Runbook\n" +
+              "- **Causal Isolation:** Hardware monotonic nanosecond ordering (`hw_monotonic_ns`) separates root HBM3e ECC (`0x4E02`) or EFA SRD optical drops from 63 downstream `nccomAllReduce` barrier timeouts.\n" +
+              "- **Operator Triage & Compiler Flags:**\n" +
+              "```bash\n" +
+              "neuron-ls --topology && fi_info -p efa\n" +
+              "export NEURON_CC_FLAGS=\"--lnc=2 --auto-cast=fp8_e4m3 --quantized-kv-cache=fp8 --neuron-nki-flash-attn=enable --fuse-qkv --fuse-mlp\"\n" +
+              "ultraserver-ctl cordon trn2-node-02 --promote-spare trn2-spare-01\n" +
+              "```"
+          });
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "⚡ Ask Bedrock Nova Neuron Copilot (/api/copilot/ask)";
+        }
+      };
+
+      // Boot immediately with deterministic state, then hydrate live from /api/*
+      parseHashState();
+      applyTheme(activeTheme);
+      switchTab(activeTab);
+      state.cluster = buildNominalCluster();
+      state.profiler = buildFallbackProfiler(state.profParams);
+      renderClusterMatrix();
+      renderSpareSwapTab();
+      renderRooflineStudio();
+      probeHealth();
+
+      apiCall("/api/state", "GET")
+        .then((initial) => {
+          if (initial.cluster) state.cluster = initial.cluster;
+          if (initial.profiler) state.profiler = initial.profiler;
+          renderClusterMatrix();
+          renderSpareSwapTab();
+          renderRooflineStudio();
+          runCopilotQuery();
+        })
+        .catch(() => {
+          runCopilotQuery();
+        });
+    })();
+  </script>
 </body>
 </html>
