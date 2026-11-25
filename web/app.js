@@ -1,4 +1,4 @@
-/* NeuronPulse Frontend Controller — Zero localStorage (uses in-memory state + location.hash) */
+/* NeuronPulse Frontend Controller — Stateless browser memory + location.hash */
 (() => {
   const state = {
     cluster: null,
