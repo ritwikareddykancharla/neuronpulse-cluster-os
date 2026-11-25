@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 _SUMPROD = math.sumprod
+_SQRT3 = math.sqrt(3.0)
 _PACK_F16 = struct.Struct("<e").pack
 _UNPACK_F16 = struct.Struct("<e").unpack
 
@@ -350,20 +351,21 @@ def _run_topk_swiglu_moe_router(
 ) -> Dict[str, Any]:
     """Execute Top-2 SwiGLU Mixture-of-Experts routing comparing skewed vs load-balanced gating."""
     rng = random.Random(seed)
-    scale_x = 0.35
-    scale_w = 1.0 / math.sqrt(hidden_dim)
-    scale_down = 1.0 / math.sqrt(expert_ffn_dim)
+    u_rand = rng.uniform
+    s_x = 0.35 * _SQRT3
+    s_w = _SQRT3 / math.sqrt(hidden_dim)
+    s_down = _SQRT3 / math.sqrt(expert_ffn_dim)
 
-    tokens = [[rng.gauss(0.0, scale_x) for _ in range(hidden_dim)] for _ in range(num_tokens)]
-    router_w = [[rng.gauss(0.0, scale_w) for _ in range(num_experts)] for _ in range(hidden_dim)]
+    tokens = [[u_rand(-s_x, s_x) for _ in range(hidden_dim)] for _ in range(num_tokens)]
+    router_w = [[u_rand(-s_w, s_w) for _ in range(num_experts)] for _ in range(hidden_dim)]
     # Realistic hotspot skew on Expert 0 & Expert 1 in uncalibrated router
     skew_bias = [1.35, 0.95] + [-0.28] * (num_experts - 2)
 
     experts = [
         (
-            [[rng.gauss(0.0, scale_w) for _ in range(expert_ffn_dim)] for _ in range(hidden_dim)],
-            [[rng.gauss(0.0, scale_w) for _ in range(expert_ffn_dim)] for _ in range(hidden_dim)],
-            [[rng.gauss(0.0, scale_down) for _ in range(hidden_dim)] for _ in range(expert_ffn_dim)],
+            [[u_rand(-s_w, s_w) for _ in range(expert_ffn_dim)] for _ in range(hidden_dim)],
+            [[u_rand(-s_w, s_w) for _ in range(expert_ffn_dim)] for _ in range(hidden_dim)],
+            [[u_rand(-s_down, s_down) for _ in range(hidden_dim)] for _ in range(expert_ffn_dim)],
         )
         for _ in range(num_experts)
     ]
@@ -488,21 +490,24 @@ def run_quantization_moe_benchmark(
     outlier_channels = sorted(rng.sample(range(k), num_outliers))
     outlier_set = set(outlier_channels)
 
+    u_rand = rng.uniform
+    s_norm = 0.35 * _SQRT3
+    s_out = s_norm * out_mult
     raw_x = [
         [
-            rng.gauss(0.0, 0.35 * out_mult) if j in outlier_set else rng.gauss(0.0, 0.35)
+            u_rand(-s_out, s_out) if j in outlier_set else u_rand(-s_norm, s_norm)
             for j in range(k)
         ]
         for _ in range(m)
     ]
-    w_std = 1.0 / math.sqrt(k)
+    w_lim = _SQRT3 / math.sqrt(k)
     # In trained Transformer layers (Xiao et al., SmoothQuant), systematic activation outlier
     # channels exhibit correspondingly attenuated weights so output logits remain bounded,
     # whereas naive per-token INT8 activation scaling crushes the remaining 95% normal channels.
-    outlier_w_damp = 1.0 / math.sqrt(out_mult)
+    w_out_lim = w_lim / math.sqrt(out_mult)
     raw_w = [
         [
-            rng.gauss(0.0, w_std * (outlier_w_damp if j in outlier_set else 1.0))
+            u_rand(-w_out_lim, w_out_lim) if j in outlier_set else u_rand(-w_lim, w_lim)
             for _ in range(n)
         ]
         for j in range(k)

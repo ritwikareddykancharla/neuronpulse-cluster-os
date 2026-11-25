@@ -1,13 +1,13 @@
 {
   "benchmark_suite": "neuronpulse-real-ml-systems-v2.1",
-  "measured_at_utc": "2026-11-25T23:11:48Z",
+  "measured_at_utc": "2026-11-25T23:28:43Z",
   "environment": {
     "python_version": "3.14.6",
     "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
     "aws_region": "us-west-2",
     "ec2_or_gpu_instances_used": 0,
     "serverless_idle_cost_usd": 0.0,
-    "total_suite_wall_sec": 17.141
+    "total_suite_wall_sec": 16.638
   },
   "compiler_ir_eval": {
     "primary_stacked_2layer": {
@@ -17,7 +17,7 @@
         "hidden_dim": 64,
         "ffn_dim": 256
       },
-      "compile_pass_wall_ms": 4.915,
+      "compile_pass_wall_ms": 5.798,
       "unoptimized_op_nodes": 27,
       "optimized_op_nodes": 10,
       "op_node_reduction_pct": 63.0,
@@ -27,10 +27,10 @@
       "optimized_peak_bytes": 954136,
       "peak_memory_saved_bytes": 6851984,
       "peak_memory_saved_pct": 87.8,
-      "unoptimized_latency_ms": 38.78,
-      "optimized_latency_ms": 22.185,
-      "execution_speedup_x": 1.75,
-      "latency_reduction_pct": 42.8,
+      "unoptimized_latency_ms": 35.893,
+      "optimized_latency_ms": 19.411,
+      "execution_speedup_x": 1.85,
+      "latency_reduction_pct": 45.9,
       "max_abs_diff": 0.0,
       "numerically_equivalent": true,
       "pass_trace": [
@@ -72,7 +72,7 @@
           "hidden_dim": 64,
           "ffn_dim": 256
         },
-        "compile_pass_wall_ms": 2.892,
+        "compile_pass_wall_ms": 2.798,
         "unoptimized_op_nodes": 18,
         "optimized_op_nodes": 5,
         "op_node_reduction_pct": 72.2,
@@ -82,10 +82,10 @@
         "optimized_peak_bytes": 818352,
         "peak_memory_saved_bytes": 4173312,
         "peak_memory_saved_pct": 83.6,
-        "unoptimized_latency_ms": 23.513,
-        "optimized_latency_ms": 11.527,
-        "execution_speedup_x": 2.04,
-        "latency_reduction_pct": 51.0,
+        "unoptimized_latency_ms": 20.283,
+        "optimized_latency_ms": 9.738,
+        "execution_speedup_x": 2.08,
+        "latency_reduction_pct": 52.0,
         "max_abs_diff": 0.0,
         "numerically_equivalent": true,
         "pass_trace": [
@@ -124,7 +124,7 @@
           "hidden_dim": 64,
           "ffn_dim": 256
         },
-        "compile_pass_wall_ms": 4.915,
+        "compile_pass_wall_ms": 5.798,
         "unoptimized_op_nodes": 27,
         "optimized_op_nodes": 10,
         "op_node_reduction_pct": 63.0,
@@ -134,10 +134,10 @@
         "optimized_peak_bytes": 954136,
         "peak_memory_saved_bytes": 6851984,
         "peak_memory_saved_pct": 87.8,
-        "unoptimized_latency_ms": 38.78,
-        "optimized_latency_ms": 22.185,
-        "execution_speedup_x": 1.75,
-        "latency_reduction_pct": 42.8,
+        "unoptimized_latency_ms": 35.893,
+        "optimized_latency_ms": 19.411,
+        "execution_speedup_x": 1.85,
+        "latency_reduction_pct": 45.9,
         "max_abs_diff": 0.0,
         "numerically_equivalent": true,
         "pass_trace": [
@@ -176,7 +176,7 @@
           "hidden_dim": 64,
           "ffn_dim": 384
         },
-        "compile_pass_wall_ms": 4.272,
+        "compile_pass_wall_ms": 3.854,
         "unoptimized_op_nodes": 18,
         "optimized_op_nodes": 5,
         "op_node_reduction_pct": 72.2,
@@ -186,10 +186,10 @@
         "optimized_peak_bytes": 1155280,
         "peak_memory_saved_bytes": 5950016,
         "peak_memory_saved_pct": 83.7,
-        "unoptimized_latency_ms": 35.117,
-        "optimized_latency_ms": 16.452,
-        "execution_speedup_x": 2.13,
-        "latency_reduction_pct": 53.2,
+        "unoptimized_latency_ms": 30.399,
+        "optimized_latency_ms": 14.429,
+        "execution_speedup_x": 2.11,
+        "latency_reduction_pct": 52.5,
         "max_abs_diff": 0.0,
         "numerically_equivalent": true,
         "pass_trace": [
@@ -243,8 +243,8 @@
           "memory_saved_bytes": 953320,
           "memory_reduction_pct": 79.25,
           "memory_compression_x": 4.82,
-          "naive_wall_ms": 6.604,
-          "flash_wall_ms": 7.462,
+          "naive_wall_ms": 5.949,
+          "flash_wall_ms": 6.813,
           "max_abs_diff": 1.3877787807814457e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -270,8 +270,8 @@
           "memory_saved_bytes": 4101528,
           "memory_reduction_pct": 90.15,
           "memory_compression_x": 10.15,
-          "naive_wall_ms": 26.198,
-          "flash_wall_ms": 29.648,
+          "naive_wall_ms": 21.416,
+          "flash_wall_ms": 26.773,
           "max_abs_diff": 1.0408340855860843e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -297,8 +297,8 @@
           "memory_saved_bytes": 16610520,
           "memory_reduction_pct": 95.18,
           "memory_compression_x": 20.74,
-          "naive_wall_ms": 101.986,
-          "flash_wall_ms": 118.893,
+          "naive_wall_ms": 86.965,
+          "flash_wall_ms": 103.985,
           "max_abs_diff": 1.214306433183765e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -325,8 +325,8 @@
         "memory_saved_bytes": 16610520,
         "memory_reduction_pct": 95.18,
         "memory_compression_x": 20.74,
-        "naive_wall_ms": 101.986,
-        "flash_wall_ms": 118.893,
+        "naive_wall_ms": 86.965,
+        "flash_wall_ms": 103.985,
         "max_abs_diff": 1.214306433183765e-17,
         "numerically_exact": true,
         "sample_output_row0": [
@@ -364,8 +364,8 @@
           "memory_saved_bytes": 709912,
           "memory_reduction_pct": 70.44,
           "memory_compression_x": 3.38,
-          "naive_wall_ms": 4.862,
-          "flash_wall_ms": 4.216,
+          "naive_wall_ms": 4.355,
+          "flash_wall_ms": 3.688,
           "max_abs_diff": 5.551115123125783e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -391,8 +391,8 @@
           "memory_saved_bytes": 3271344,
           "memory_reduction_pct": 86.86,
           "memory_compression_x": 7.61,
-          "naive_wall_ms": 18.306,
-          "flash_wall_ms": 14.975,
+          "naive_wall_ms": 16.74,
+          "flash_wall_ms": 13.6,
           "max_abs_diff": 5.551115123125783e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -418,8 +418,8 @@
           "memory_saved_bytes": 13423832,
           "memory_reduction_pct": 93.79,
           "memory_compression_x": 16.11,
-          "naive_wall_ms": 80.177,
-          "flash_wall_ms": 60.827,
+          "naive_wall_ms": 68.793,
+          "flash_wall_ms": 52.304,
           "max_abs_diff": 2.7755575615628914e-17,
           "numerically_exact": true,
           "sample_output_row0": [
@@ -446,8 +446,8 @@
         "memory_saved_bytes": 13423832,
         "memory_reduction_pct": 93.79,
         "memory_compression_x": 16.11,
-        "naive_wall_ms": 80.177,
-        "flash_wall_ms": 60.827,
+        "naive_wall_ms": 68.793,
+        "flash_wall_ms": 52.304,
         "max_abs_diff": 2.7755575615628914e-17,
         "numerically_exact": true,
         "sample_output_row0": [
@@ -613,7 +613,7 @@
         ]
       }
     ],
-    "wall_clock_ms": 9.72
+    "wall_clock_ms": 8.925
   },
   "quant_spec_eval": {
     "quantization_and_moe": {
@@ -646,28 +646,28 @@
         "w4a16_effective_bits_per_weight": 4.5
       },
       "naive_w8a8": {
-        "cosine_similarity": 0.998465,
-        "sqnr_db": 25.13,
-        "max_abs_logit_error": 0.120571,
-        "mean_abs_logit_error": 0.019784
+        "cosine_similarity": 0.998929,
+        "sqnr_db": 26.69,
+        "max_abs_logit_error": 0.089835,
+        "mean_abs_logit_error": 0.017179
       },
       "smoothquant_w8a8": {
         "alpha": 0.5,
-        "max_migration_scale": 17.614,
-        "cosine_similarity": 0.999956,
-        "sqnr_db": 40.59,
-        "max_abs_logit_error": 0.025264,
-        "mean_abs_logit_error": 0.003463,
-        "sqnr_gain_over_naive_db": 15.46,
-        "max_error_reduction_x": 4.77
+        "max_migration_scale": 17.313,
+        "cosine_similarity": 0.999969,
+        "sqnr_db": 42.11,
+        "max_abs_logit_error": 0.016412,
+        "mean_abs_logit_error": 0.002898,
+        "sqnr_gain_over_naive_db": 15.42,
+        "max_error_reduction_x": 5.47
       },
       "group_w4a16": {
         "group_size": 32,
         "num_groups": 1024,
-        "cosine_similarity": 0.995348,
-        "sqnr_db": 20.26,
-        "max_abs_logit_error": 0.182056,
-        "mean_abs_logit_error": 0.036229
+        "cosine_similarity": 0.99763,
+        "sqnr_db": 23.22,
+        "max_abs_logit_error": 0.136952,
+        "mean_abs_logit_error": 0.025704
       },
       "moe_swiglu": {
         "num_tokens": 128,
@@ -684,38 +684,38 @@
             0,
             0,
             0,
-            1,
             0,
-            0
+            1,
+            1
           ],
-          "dropped_assignments": 175,
-          "drop_rate_pct": 68.36,
-          "load_cv": 1.704,
-          "aux_balance_loss": 0.7257,
+          "dropped_assignments": 174,
+          "drop_rate_pct": 67.97,
+          "load_cv": 1.676,
+          "aux_balance_loss": 0.7317,
           "sample_output_row0": []
         },
         "balanced_router": {
           "expert_token_counts": [
+            40,
+            24,
+            31,
+            31,
+            40,
             35,
-            37,
-            33,
-            30,
-            32,
-            29,
-            33,
+            27,
             27
           ],
-          "dropped_assignments": 0,
-          "drop_rate_pct": 0.0,
-          "load_cv": 0.095,
-          "aux_balance_loss": 1.002,
+          "dropped_assignments": 1,
+          "drop_rate_pct": 0.39,
+          "load_cv": 0.176,
+          "aux_balance_loss": 0.9985,
           "sample_output_row0": [
-            0.061464,
-            0.007746,
-            0.044656,
-            0.027104,
-            -0.129799,
-            -0.084163
+            0.019357,
+            0.062015,
+            0.012981,
+            -0.025206,
+            -0.015566,
+            -0.069148
           ]
         },
         "tp_sharding_verification": {
@@ -727,7 +727,7 @@
           "numerically_equivalent": true
         }
       },
-      "wall_clock_ms": 166.101
+      "wall_clock_ms": 131.208
     },
     "speculative_decoding": {
       "gamma": 4,
@@ -848,7 +848,7 @@
           "kv_rolled_back": 0
         }
       ],
-      "wall_clock_ms": 7.064
+      "wall_clock_ms": 6.131
     },
     "aot_bucketing_and_packing": {
       "num_sequences": 256,
@@ -968,9 +968,9 @@
         "block_diagonal_max_abs_diff": 0.0,
         "zero_cross_doc_leakage_verified": true
       },
-      "wall_clock_ms": 13.653
+      "wall_clock_ms": 11.391
     },
-    "suite_wall_ms": 187.618
+    "suite_wall_ms": 149.419
   },
   "transport_ring_eval": {
     "sq_cq_ring": {
@@ -988,9 +988,9 @@
       "steady_state_heap_alloc_bytes": 1068,
       "naive_queue_heap_alloc_bytes": 25824,
       "heap_alloc_reduction_pct": 95.86,
-      "ring_wall_ms": 4.421,
-      "naive_queue_wall_ms": 1.404,
-      "ring_us_per_msg": 1.079
+      "ring_wall_ms": 3.861,
+      "naive_queue_wall_ms": 1.238,
+      "ring_us_per_msg": 0.943
     },
     "mr_interval_cache": {
       "registered_slabs_in_tree": 213,
@@ -1003,12 +1003,12 @@
       "cache_hits": 940,
       "cache_misses": 86,
       "cache_hit_rate_pct": 91.62,
-      "cached_lookup_wall_ms": 2.144,
-      "cold_page_pin_wall_ms": 13.198,
+      "cached_lookup_wall_ms": 1.798,
+      "cold_page_pin_wall_ms": 10.886,
       "cold_pages_walked": 131072,
-      "mr_cache_speedup_x": 6.16,
-      "cached_us_per_lookup": 2.094,
-      "cold_us_per_lookup": 12.889,
+      "mr_cache_speedup_x": 6.05,
+      "cached_us_per_lookup": 1.756,
+      "cold_us_per_lookup": 10.631,
       "invalidation_safety_check": {
         "hit_before_invalidate": true,
         "evicted_overlapping_mrs": 1,
@@ -1031,7 +1031,7 @@
     "arrival_order_correct": 1,
     "arrival_order_accuracy_pct": 2.1,
     "accuracy_gain_pts": 97.9,
-    "wall_clock_ms": 2.966,
+    "wall_clock_ms": 2.531,
     "scenarios_available": [
       {
         "scenario_id": "oom_allocator_trap",
@@ -1151,35 +1151,35 @@
             "message": "Collective ring barrier timed out waiting on upstream peer rank."
           }
         ],
-        "wall_clock_ms": 0.0385
+        "wall_clock_ms": 0.03
       }
     }
   },
   "bedrock_serverless_eval": {
     "region": "us-west-2",
     "prompts_evaluated_per_model": 5,
-    "total_suite_wall_ms": 10306.3,
-    "total_benchmark_cost_usd": 0.000132,
+    "total_suite_wall_ms": 10834.19,
+    "total_benchmark_cost_usd": 0.00013,
     "nova_micro": {
       "model_id": "us.amazon.nova-micro-v1:0",
       "label": "Amazon Nova Micro",
       "region": "us-west-2",
       "num_requests": 5,
-      "tls_warmup_ms": 1031.39,
-      "p50_wall_ms": 737.01,
-      "p95_wall_ms": 832.54,
-      "mean_wall_ms": 749.33,
-      "p50_bedrock_ms": 474.0,
-      "p95_bedrock_ms": 577.2,
-      "mean_bedrock_ms": 473.6,
-      "tokens_per_sec": 98.82,
-      "e2e_tokens_per_sec": 62.46,
+      "tls_warmup_ms": 1248.22,
+      "p50_wall_ms": 723.53,
+      "p95_wall_ms": 864.98,
+      "mean_wall_ms": 756.42,
+      "p50_bedrock_ms": 453.0,
+      "p95_bedrock_ms": 565.6,
+      "mean_bedrock_ms": 481.0,
+      "tokens_per_sec": 101.04,
+      "e2e_tokens_per_sec": 64.25,
       "total_input_tokens": 341,
-      "total_output_tokens": 234,
+      "total_output_tokens": 243,
       "avg_input_tokens": 68.2,
-      "avg_output_tokens": 46.8,
-      "usd_per_1k_requests": 0.00892,
-      "actual_run_cost_usd": 4.5e-05,
+      "avg_output_tokens": 48.6,
+      "usd_per_1k_requests": 0.0092,
+      "actual_run_cost_usd": 4.6e-05,
       "pricing_per_1m_tokens_usd": {
         "input": 0.035,
         "output": 0.14
@@ -1188,67 +1188,67 @@
         {
           "sample_index": 1,
           "prompt_preview": "A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...",
-          "wall_clock_ms": 854.85,
-          "bedrock_latency_ms": 599.0,
+          "wall_clock_ms": 750.67,
+          "bedrock_latency_ms": 484.0,
           "input_tokens": 104,
-          "output_tokens": 50,
-          "total_tokens": 154,
-          "server_tokens_per_sec": 83.47,
-          "e2e_tokens_per_sec": 58.49,
-          "request_cost_usd": 1.06e-05,
-          "response_text": "- Root cause: Memory allocation failure (OOM) on worker-19 causing all-reduce timeouts.\n- Immediate action: Isolate and restart worker-19; increase memory allocation or reduce batch size to prevent future OOMs."
+          "output_tokens": 41,
+          "total_tokens": 145,
+          "server_tokens_per_sec": 84.71,
+          "e2e_tokens_per_sec": 54.62,
+          "request_cost_usd": 9.4e-06,
+          "response_text": "- Root cause: Memory allocation failure (OOM) on worker-19.\n- Immediate recovery: Restart worker-19 and increase memory allocation or reduce batch size to prevent future OOMs."
         },
         {
           "sample_index": 2,
           "prompt_preview": "Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...",
-          "wall_clock_ms": 731.53,
-          "bedrock_latency_ms": 474.0,
+          "wall_clock_ms": 893.56,
+          "bedrock_latency_ms": 586.0,
           "input_tokens": 59,
-          "output_tokens": 49,
-          "total_tokens": 108,
-          "server_tokens_per_sec": 103.38,
-          "e2e_tokens_per_sec": 66.98,
-          "request_cost_usd": 8.9e-06,
-          "response_text": "Online-softmax block-tiled FlashAttention computes attention scores incrementally, using a tiled approach to avoid materializing the full O(N^2) score matrix, while maintaining numerical equivalence through careful partitioning and recomputation of intermediate results."
+          "output_tokens": 53,
+          "total_tokens": 112,
+          "server_tokens_per_sec": 90.44,
+          "e2e_tokens_per_sec": 59.31,
+          "request_cost_usd": 9.5e-06,
+          "response_text": "Online-softmax block-tiled FlashAttention computes softmax scores incrementally, leveraging block-tiled matrix operations to avoid materializing the full O(N^2) score matrix, thus maintaining numerical equivalence to standard softmax attention with reduced memory usage."
         },
         {
           "sample_index": 3,
           "prompt_preview": "Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...",
-          "wall_clock_ms": 743.3,
-          "bedrock_latency_ms": 490.0,
+          "wall_clock_ms": 723.53,
+          "bedrock_latency_ms": 453.0,
           "input_tokens": 72,
-          "output_tokens": 54,
-          "total_tokens": 126,
-          "server_tokens_per_sec": 110.2,
-          "e2e_tokens_per_sec": 72.65,
-          "request_cost_usd": 1.01e-05,
-          "response_text": "1. Block-size-16 Paged KV-Cache allocates 16-token blocks, minimizing unused space per request.  \n2. Copy-on-Write avoids redundant data copies, optimizing cache usage and reducing fragmentation from concurrent updates."
+          "output_tokens": 55,
+          "total_tokens": 127,
+          "server_tokens_per_sec": 121.41,
+          "e2e_tokens_per_sec": 76.02,
+          "request_cost_usd": 1.02e-05,
+          "response_text": "1. Block-size-16 Paged KV-Cache allocates fixed-size 16-token blocks, minimizing unused space.  \n2. Copy-on-Write avoids redundant data copies, optimizing cache usage and reducing fragmentation from concurrent updates."
         },
         {
           "sample_index": 4,
           "prompt_preview": "In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...",
-          "wall_clock_ms": 737.01,
-          "bedrock_latency_ms": 391.0,
+          "wall_clock_ms": 710.72,
+          "bedrock_latency_ms": 445.0,
           "input_tokens": 56,
-          "output_tokens": 37,
-          "total_tokens": 93,
-          "server_tokens_per_sec": 94.63,
-          "e2e_tokens_per_sec": 50.2,
-          "request_cost_usd": 7.1e-06,
-          "response_text": "Fusing MatMul + AddBias + GELU reduces peak intermediate memory allocation by minimizing the number of separate tensors created, thus lowering memory overhead and improving cache efficiency during computation."
+          "output_tokens": 46,
+          "total_tokens": 102,
+          "server_tokens_per_sec": 103.37,
+          "e2e_tokens_per_sec": 64.72,
+          "request_cost_usd": 8.4e-06,
+          "response_text": "Fusing MatMul + AddBias + GELU reduces peak intermediate memory allocation by eliminating the need for separate memory accesses for each operation, thus consolidating computations into a single kernel, which optimizes memory usage and reduces overhead."
         },
         {
           "sample_index": 5,
           "prompt_preview": "Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...",
-          "wall_clock_ms": 679.95,
-          "bedrock_latency_ms": 414.0,
+          "wall_clock_ms": 703.63,
+          "bedrock_latency_ms": 437.0,
           "input_tokens": 50,
-          "output_tokens": 44,
-          "total_tokens": 94,
-          "server_tokens_per_sec": 106.28,
-          "e2e_tokens_per_sec": 64.71,
-          "request_cost_usd": 7.9e-06,
-          "response_text": "1. Latency-optimized micro models deliver lower response times but may lack feature richness. 2. Multimodal-capable lite models support diverse data types but typically incur higher latency due to complex processing."
+          "output_tokens": 48,
+          "total_tokens": 98,
+          "server_tokens_per_sec": 109.84,
+          "e2e_tokens_per_sec": 68.22,
+          "request_cost_usd": 8.5e-06,
+          "response_text": "1. Latency-optimized micro models deliver faster inference speeds for high QPS but may lack feature richness.  \n2. Multimodal-capable lite models support richer data types but typically have higher latency due to complex processing."
         }
       ]
     },
@@ -1257,21 +1257,21 @@
       "label": "Amazon Nova Lite",
       "region": "us-west-2",
       "num_requests": 5,
-      "tls_warmup_ms": 539.23,
-      "p50_wall_ms": 905.32,
-      "p95_wall_ms": 1054.5,
-      "mean_wall_ms": 923.02,
-      "p50_bedrock_ms": 651.0,
-      "p95_bedrock_ms": 798.8,
-      "mean_bedrock_ms": 666.8,
-      "tokens_per_sec": 82.48,
-      "e2e_tokens_per_sec": 59.59,
+      "tls_warmup_ms": 580.39,
+      "p50_wall_ms": 924.31,
+      "p95_wall_ms": 1320.99,
+      "mean_wall_ms": 986.04,
+      "p50_bedrock_ms": 662.0,
+      "p95_bedrock_ms": 809.0,
+      "mean_bedrock_ms": 657.4,
+      "tokens_per_sec": 80.01,
+      "e2e_tokens_per_sec": 53.34,
       "total_input_tokens": 341,
-      "total_output_tokens": 275,
+      "total_output_tokens": 263,
       "avg_input_tokens": 68.2,
-      "avg_output_tokens": 55.0,
-      "usd_per_1k_requests": 0.0173,
-      "actual_run_cost_usd": 8.7e-05,
+      "avg_output_tokens": 52.6,
+      "usd_per_1k_requests": 0.01672,
+      "actual_run_cost_usd": 8.4e-05,
       "pricing_per_1m_tokens_usd": {
         "input": 0.06,
         "output": 0.24
@@ -1280,74 +1280,74 @@
         {
           "sample_index": 1,
           "prompt_preview": "A 64-worker distributed training step logged 1 ERR_WORKER_SLAB_OOM_0x41 at t=0ms on worker-19 fo...",
-          "wall_clock_ms": 989.8,
-          "bedrock_latency_ms": 734.0,
+          "wall_clock_ms": 924.31,
+          "bedrock_latency_ms": 662.0,
           "input_tokens": 104,
-          "output_tokens": 44,
-          "total_tokens": 148,
-          "server_tokens_per_sec": 59.95,
-          "e2e_tokens_per_sec": 44.45,
-          "request_cost_usd": 1.68e-05,
-          "response_text": "- **Root Cause:** Worker-19 ran out of memory, causing a barrier timeout for the collective operation.\n- **Immediate Action:** Increase memory allocation for workers or reduce batch size to fit within available memory."
+          "output_tokens": 47,
+          "total_tokens": 151,
+          "server_tokens_per_sec": 71.0,
+          "e2e_tokens_per_sec": 50.85,
+          "request_cost_usd": 1.75e-05,
+          "response_text": "- Root cause: Worker-19 ran out of memory, causing a barrier timeout for the collective operation.\n- Immediate action: Increase memory on worker-19 or reduce batch size/model complexity to fit within available resources."
         },
         {
           "sample_index": 2,
           "prompt_preview": "Explain in 2 short sentences why online-softmax block-tiled FlashAttention avoids materializing ...",
-          "wall_clock_ms": 880.38,
-          "bedrock_latency_ms": 620.0,
+          "wall_clock_ms": 958.93,
+          "bedrock_latency_ms": 693.0,
           "input_tokens": 59,
-          "output_tokens": 58,
-          "total_tokens": 117,
-          "server_tokens_per_sec": 93.55,
-          "e2e_tokens_per_sec": 65.88,
-          "request_cost_usd": 1.75e-05,
-          "response_text": "Online-softmax block-tiled FlashAttention avoids materializing the O(N^2) score matrix by processing queries and keys in blocks, reducing memory usage. It remains numerically identical to standard softmax attention by ensuring the softmax operation is accurately computed on the same attention scores."
+          "output_tokens": 57,
+          "total_tokens": 116,
+          "server_tokens_per_sec": 82.25,
+          "e2e_tokens_per_sec": 59.44,
+          "request_cost_usd": 1.72e-05,
+          "response_text": "Online-softmax block-tiled FlashAttention avoids materializing the O(N^2) score matrix by processing queries and keys in blocks, reducing memory usage. It remains numerically identical to standard softmax attention by ensuring the softmax operation is accurately computed on the same input."
         },
         {
           "sample_index": 3,
           "prompt_preview": "Given 64 concurrent multi-turn LLM requests sharing a 256-token system prompt, explain in 2 conc...",
-          "wall_clock_ms": 905.32,
-          "bedrock_latency_ms": 651.0,
+          "wall_clock_ms": 831.92,
+          "bedrock_latency_ms": 568.0,
           "input_tokens": 72,
           "output_tokens": 66,
           "total_tokens": 138,
-          "server_tokens_per_sec": 101.38,
-          "e2e_tokens_per_sec": 72.9,
+          "server_tokens_per_sec": 116.2,
+          "e2e_tokens_per_sec": 79.33,
           "request_cost_usd": 2.02e-05,
-          "response_text": "- Each LLM request uses 4 tokens, totaling 256 tokens for 64 requests.\n- Block-size-16 Paged KV-Cache with Copy-on-Write ensures each block is 16 tokens, minimizing unused space by reusing blocks across requests, thus reducing internal fragmentation."
+          "response_text": "- Each LLM request uses 4 tokens, totaling 256 tokens for 64 requests.\n- Block-size-16 Paged KV-Cache with Copy-on-Write ensures each block is 16 tokens, minimizing unused space by reusing blocks across requests, thus eliminating internal fragmentation."
         },
         {
           "sample_index": 4,
           "prompt_preview": "In an ML computation graph, why does fusing MatMul + AddBias + GELU into a single epilogue kerne...",
-          "wall_clock_ms": 768.9,
-          "bedrock_latency_ms": 514.0,
+          "wall_clock_ms": 803.53,
+          "bedrock_latency_ms": 526.0,
           "input_tokens": 56,
-          "output_tokens": 41,
-          "total_tokens": 97,
-          "server_tokens_per_sec": 79.77,
-          "e2e_tokens_per_sec": 53.32,
-          "request_cost_usd": 1.32e-05,
-          "response_text": "Fusing MatMul, AddBias, and GELU into a single kernel avoids intermediate data storage, minimizing peak memory usage. This contiguous processing reduces the need for temporary memory allocations, optimizing memory efficiency."
+          "output_tokens": 38,
+          "total_tokens": 94,
+          "server_tokens_per_sec": 72.24,
+          "e2e_tokens_per_sec": 47.29,
+          "request_cost_usd": 1.25e-05,
+          "response_text": "Fusing MatMul, AddBias, and GELU into a single kernel avoids intermediate data storage, minimizing peak memory usage. This contiguous processing reduces memory allocation overhead and improves cache efficiency."
         },
         {
           "sample_index": 5,
           "prompt_preview": "Compare latency-optimized micro models vs multimodal-capable lite models for high-QPS automated ...",
-          "wall_clock_ms": 1070.68,
-          "bedrock_latency_ms": 815.0,
+          "wall_clock_ms": 1411.5,
+          "bedrock_latency_ms": 838.0,
           "input_tokens": 50,
-          "output_tokens": 66,
-          "total_tokens": 116,
-          "server_tokens_per_sec": 80.98,
-          "e2e_tokens_per_sec": 61.64,
-          "request_cost_usd": 1.88e-05,
-          "response_text": "- **Latency-optimized micro models**: Lower latency, faster response times, ideal for high-QPS environments, but limited in handling complex, multimodal data.\n- **Multimodal-capable lite models**: Handles diverse data types, better for nuanced incident analysis, but may have higher latency, impacting QPS performance."
+          "output_tokens": 55,
+          "total_tokens": 105,
+          "server_tokens_per_sec": 65.63,
+          "e2e_tokens_per_sec": 38.97,
+          "request_cost_usd": 1.62e-05,
+          "response_text": "- **Latency-optimized micro models**: Specialized for speed, they process logs quickly but may lack depth in understanding complex incidents.\n- **Multimodal-capable lite models**: Balance speed and understanding, handling varied data types but with slightly higher latency compared to micro models."
         }
       ]
     },
     "head_to_head": {
-      "micro_vs_lite_p50_speedup_x": 1.37,
-      "micro_vs_lite_tok_s_ratio_x": 1.2,
-      "micro_cost_savings_vs_lite_pct": 48.4
+      "micro_vs_lite_p50_speedup_x": 1.46,
+      "micro_vs_lite_tok_s_ratio_x": 1.26,
+      "micro_cost_savings_vs_lite_pct": 45.0
     }
   }
 }

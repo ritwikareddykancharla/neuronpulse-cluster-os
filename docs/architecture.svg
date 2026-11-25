@@ -83,11 +83,11 @@
   <text x="850" y="258" class="badge">LIVE BEDROCK · US-WEST-2</text>
   <text x="852" y="286" class="title">Bedrock Converse API</text>
   <text x="852" y="308" class="sub">us.amazon.nova-micro-v1:0</text>
-  <text x="852" y="326" class="sub">  p50: 474ms · 98.82 tok/s</text>
+  <text x="852" y="326" class="sub">  p50: 453ms · 101.04 tok/s</text>
   <text x="852" y="348" class="sub">us.amazon.nova-lite-v1:0</text>
-  <text x="852" y="366" class="sub">  p50: 651ms · 82.48 tok/s</text>
+  <text x="852" y="366" class="sub">  p50: 662ms · 80.01 tok/s</text>
   <text x="852" y="390" class="sub">IAM Least-Privilege Invoke</text>
-  <text x="852" y="408" class="sub">$0.000132 per benchmark suite</text>
+  <text x="852" y="408" class="sub">$0.000130 per benchmark suite</text>
 
   <!-- Benchmark Artifact Box -->
   <rect x="842" y="88" width="268" height="114" class="shadow"/>

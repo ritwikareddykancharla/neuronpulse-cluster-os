@@ -125,7 +125,12 @@ def route_api_request(
                 memory_cap_mb=1280,
             )
             live_quant_spec = run_quant_spec_suite()
-            live_transport = run_transport_ring_mr_benchmark(num_messages=2048, num_mr_lookups=512)
+            live_transport = run_transport_ring_mr_benchmark(
+                ring_capacity=128,
+                num_messages=1024,
+                num_mr_regions=64,
+                num_mr_lookups=256,
+            )
             live_corr = run_correlator_benchmark(trials=48, num_workers=64, seed=42)
             return 200, {
                 "request_id": request_id,
